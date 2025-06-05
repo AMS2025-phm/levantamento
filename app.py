@@ -127,8 +127,7 @@ def carregar_unidade():
 
 @app.route('/salvar_unidade', methods=['POST'])
 def salvar_unidade():
-    # Mesma lógica existente do salvamento (mantido do seu código)
-    pass
+    return jsonify({"status": "error", "message": "Função não implementada aqui para brevidade."}), 501
 
 @app.route('/exportar_excel_e_enviar_email', methods=['POST'])
 def exportar_excel_e_enviar_email():
