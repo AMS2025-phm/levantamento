@@ -5,147 +5,169 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro de Localidades e Medidas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Estilos adicionados para o layout lado a lado */
+        .main-wrapper {
+            display: flex;
+            align-items: flex-start; /* Alinha os itens no topo */
+            gap: 30px; /* Espaço entre a imagem e o formulário */
+        }
+        .logo-container {
+            flex-shrink: 0; /* Impede que a imagem encolha */
+        }
+        .logo-container img {
+            max-width: 250px; /* Define uma largura máxima para o logo */
+            height: auto;
+        }
+        .form-container {
+            flex-grow: 1; /* Faz o formulário ocupar o espaço restante */
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Cadastro de Localidades e Medidas por Unidade</h1>
+    <div class="main-wrapper">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='ams3.jpg') }}" alt="Logo AMS Multisserviços">
+        </div>
 
-        <form id="cadastroForm">
-            <div class="form-group">
-                <label for="localidade">Localidade:</label>
-                <input type="text" id="localidade" name="localidade" required>
-            </div>
-            <div class="form-group">
-                <label for="unidade">Unidade:</label>
-                <input type="text" id="unidade" name="unidade" required>
-            </div>
-            <div class="form-group">
-                <label for="data">Data:</label>
-                <input type="date" id="data" name="data" value="{{ data_hoje }}" required>
-            </div>
-            <div class="form-group">
-                <label for="responsavel">Responsavel pela unidade:</label>
-                <input type="text" id="responsavel" name="responsavel">
-            </div>
-            <div class="form-group">
-                <label for="qtd_func">Quantidade de Funcionário:</label>
-                <input type="number" id="qtd_func" name="qtd_func" min="0">
-            </div>
+        <div class="container form-container">
+            <h1>Cadastro de Localidades e Medidas por Unidade</h1>
 
-            <div class="form-group">
-                <label>Tipo de Piso:</label>
-                <div class="checkbox-group">
-                    {% for piso in tipos_piso %}
+            <form id="cadastroForm">
+                <div class="form-group">
+                    <label for="localidade">Localidade:</label>
+                    <input type="text" id="localidade" name="localidade" required>
+                </div>
+                <div class="form-group">
+                    <label for="unidade">Unidade:</label>
+                    <input type="text" id="unidade" name="unidade" required>
+                </div>
+                <div class="form-group">
+                    <label for="data">Data:</label>
+                    <input type="date" id="data" name="data" value="{{ data_hoje }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="responsavel">Responsavel pela unidade:</label>
+                    <input type="text" id="responsavel" name="responsavel">
+                </div>
+                <div class="form-group">
+                    <label for="qtd_func">Quantidade de Funcionário:</label>
+                    <input type="number" id="qtd_func" name="qtd_func" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Piso:</label>
+                    <div class="checkbox-group">
+                        {% for piso in tipos_piso %}
+                            <label>
+                                <input type="checkbox" name="piso_{{ piso }}" value="{{ piso }}"> {{ piso }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Vidros Altos:</label>
+                    <div class="radio-group">
                         <label>
-                            <input type="checkbox" name="piso_{{ piso }}" value="{{ piso }}"> {{ piso }}
+                            <input type="radio" name="vidros_altos" value="Sim"> Sim
                         </label>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Vidros Altos:</label>
-                <div class="radio-group">
-                    <label>
-                        <input type="radio" name="vidros_altos" value="Sim"> Sim
-                    </label>
-                    <label>
-                        <input type="radio" name="vidros_altos" value="Não" checked> Não
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Paredes:</label>
-                <div class="checkbox-group">
-                    {% for parede in tipos_parede %}
                         <label>
-                            <input type="checkbox" name="parede_{{ parede }}" value="{{ parede }}"> {{ parede }}
+                            <input type="radio" name="vidros_altos" value="Não" checked> Não
                         </label>
-                    {% endfor %}
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label>Outras Informações:</label>
-                <div class="checkbox-group">
-                    <label>
-                        <input type="checkbox" name="estacionamento"> Estacionamento
-                    </label>
-                    <label>
-                        <input type="checkbox" name="gramado"> Gramado
-                    </label>
-                    <label>
-                        <input type="checkbox" name="curativo"> Sala de Curativo
-                    </label>
-                    <label>
-                        <input type="checkbox" name="vacina"> Sala de Vacina
-                    </label>
+                <div class="form-group">
+                    <label>Paredes:</label>
+                    <div class="checkbox-group">
+                        {% for parede in tipos_parede %}
+                            <label>
+                                <input type="checkbox" name="parede_{{ parede }}" value="{{ parede }}"> {{ parede }}
+                            </label>
+                        {% endfor %}
+                    </div>
                 </div>
+
+                <div class="form-group">
+                    <label>Outras Informações:</label>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" name="estacionamento"> Estacionamento
+                        </label>
+                        <label>
+                            <input type="checkbox" name="gramado"> Gramado
+                        </label>
+                        <label>
+                            <input type="checkbox" name="curativo"> Sala de Curativo
+                        </label>
+                        <label>
+                            <input type="checkbox" name="vacina"> Sala de Vacina
+                        </label>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h2>Medidas</h2>
+                <div class="form-group">
+                    <label for="tipo_medida">Tipo de Medida:</label>
+                    <div class="checkbox-group">
+                        {% for tipo in tipos_medida %}
+                            <label>
+                                <input type="checkbox" name="tipo_medida" value="{{ tipo }}"> {{ tipo }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="comprimento">Comprimento (m):</label>
+                    <input type="number" id="comprimento" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="largura">Largura (m):</label>
+                    <input type="number" id="largura" step="0.01" min="0">
+                </div>
+                <div class="button-group">
+                    <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
+                    <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
+                    <button type="button" id="repeatMedidaBtn" class="btn btn-secondary">Repetir Medida</button>
+                </div>
+
+                <h3>Medidas Adicionadas:</h3>
+                <ul id="medidaList" class="medida-list">
+                    </ul>
+
+                <input type="hidden" id="medidas_json" name="medidas_json">
+
+                <div class="button-group main-actions">
+                    <button type="submit" class="btn btn-primary">Salvar Unidade</button>
+                    <button type="button" id="clearFormBtn" class="btn btn-secondary">Nova Unidade</button>
+                </div>
+            </form>
+
+            <hr>
+
+            <h2>Unidades Salvas</h2>
+            <div class="form-group">
+                <label for="localidadeUnidadeSelect">Selecionar Unidade:</label>
+                <select id="localidadeUnidadeSelect" class="form-control">
+                    <option value="">-- Selecione uma unidade --</option>
+                    </select>
+            </div>
+            <div class="button-group">
+                <button type="button" id="carregarUnidadeBtn" class="btn btn-primary">Carregar Unidade</button>
             </div>
 
             <hr>
 
-            <h2>Medidas</h2>
-            <div class="form-group">
-                <label for="tipo_medida">Tipo de Medida:</label>
-                <div class="checkbox-group">
-                    {% for tipo in tipos_medida %}
-                        <label>
-                            <input type="checkbox" name="tipo_medida" value="{{ tipo }}"> {{ tipo }}
-                        </label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="comprimento">Comprimento (m):</label>
-                <input type="number" id="comprimento" step="0.01" min="0">
-            </div>
-            <div class="form-group">
-                <label for="largura">Largura (m):</label>
-                <input type="number" id="largura" step="0.01" min="0">
-            </div>
-            <div class="button-group">
-                <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
-                <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
-                <button type="button" id="repeatMedidaBtn" class="btn btn-secondary">Repetir Medida</button>
-            </div>
-
-            <h3>Medidas Adicionadas:</h3>
-            <ul id="medidaList" class="medida-list">
-                <!-- Medidas serão adicionadas aqui via JavaScript -->
-            </ul>
-
-            <input type="hidden" id="medidas_json" name="medidas_json">
-
-            <div class="button-group main-actions">
-                <button type="submit" class="btn btn-primary">Salvar Unidade</button>
-                <button type="button" id="clearFormBtn" class="btn btn-secondary">Nova Unidade</button>
-            </div>
-        </form>
-
-        <hr>
-
-        <h2>Unidades Salvas</h2>
-        <div class="form-group">
-            <label for="localidadeUnidadeSelect">Selecionar Unidade:</label>
-            <select id="localidadeUnidadeSelect" class="form-control">
-                <option value="">-- Selecione uma unidade --</option>
-                <!-- Opções serão preenchidas via JavaScript -->
-            </select>
+            <h2>Exportar Excel e Enviar por E-mail</h2>
+            <form id="exportAndEmailForm" action="/exportar_excel_e_enviar_email" method="POST">
+                <p>O arquivo Excel será enviado para: <strong>comercialservico2025@gmail.com</strong></p>
+                <input type="hidden" id="selectedUnitToExportEmail" name="selected_unit_to_export">
+                <button type="submit" class="btn btn-success">Exportar Excel e Enviar E-mail</button>
+            </form>
         </div>
-        <div class="button-group">
-            <button type="button" id="carregarUnidadeBtn" class="btn btn-primary">Carregar Unidade</button>
-        </div>
-
-        <hr>
-
-        <h2>Exportar Excel e Enviar por E-mail</h2>
-        <form id="exportAndEmailForm" action="/exportar_excel_e_enviar_email" method="POST">
-            <p>O arquivo Excel será enviado para: <strong>comercialservico2025@gmail.com</strong></p>
-            <input type="hidden" id="selectedUnitToExportEmail" name="selected_unit_to_export">
-            <button type="submit" class="btn btn-success">Exportar Excel e Enviar E-mail</button>
-        </form>
     </div>
 
     <script>
