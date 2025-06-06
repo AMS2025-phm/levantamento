@@ -31,7 +31,7 @@
         
         <div class="header-section">
             <img src="{{ url_for('static', filename='ams3.jpg') }}" alt="Logo AMS Multisserviços">
-            <h1>Cadastro de Localidades e Medidas por Unidade</h1>
+            <h1>Levantamento de Medidas por Unidade</h1>
         </div>
 
         <form id="cadastroForm">
@@ -121,14 +121,17 @@
                     {% endfor %}
                 </div>
             </div>
-            <div class="form-group">
-                <label for="comprimento">Comprimento (m):</label>
-                <input type="number" id="comprimento" step="0.01" min="0">
-            </div>
-            <div class="form-group">
-                <label for="largura">Largura (m):</label>
-                <input type="number" id="largura" step="0.01" min="0">
-            </div>
+   	   <div class="dimension-inputs">
+                <div class="form-group">
+                    <label for="comprimento">Comprimento (m):</label>
+                    <input type="number" id="comprimento" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="largura">Largura (m):</label>
+                    <input type="number" id="largura" step="0.01" min="0">
+                </div>
+            </div>         
+
             <div class="button-group">
                 <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
                 <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
