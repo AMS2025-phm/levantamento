@@ -280,3 +280,12 @@ hr {
     flex-grow: 1; /* Permite que o campo de e-mail cresça */
     min-width: 200px; /* Garante um tamanho mínimo */
 }
+
+.dimension-inputs {
+            display: flex; /* Alinha os campos internos lado a lado */
+            gap: 20px;     /* Cria um espaço entre os dois campos */
+        }
+        
+        .dimension-inputs .form-group {
+            flex: 1; /* Faz com que cada campo ocupe uma parte igual do espaço */
+        }
