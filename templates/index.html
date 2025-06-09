@@ -54,6 +54,22 @@
                 <label for="qtd_func">Quantidade de Funcionário:</label>
                 <input type="number" id="qtd_func" name="qtd_func">
             </div>
+            <div class="form-group">
+                <label>Tipo de Piso da Unidade:</label>
+                <div class="checkbox-group" id="tipo_piso_unidade_checkboxes">
+                    {% for tipo in tipos_piso %}
+                    <label><input type="checkbox" name="tipo_piso_unidade" value="{{ tipo }}"> {{ tipo }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Tipo de Parede da Unidade:</label>
+                <div class="checkbox-group" id="tipo_parede_unidade_checkboxes">
+                    {% for tipo in tipos_parede %}
+                    <label><input type="checkbox" name="tipo_parede_unidade" value="{{ tipo }}"> {{ tipo }}</label>
+                    {% endfor %}
+                </div>
+            </div>
             <button type="submit" class="btn">Salvar Unidade</button>
         </form>
 
@@ -73,6 +89,8 @@
             <p><strong>Responsável:</strong> <span id="displayResponsavel"></span></p>
             <p><strong>Funcionários:</strong> <span id="displayQtdFunc"></span></p>
             <p><strong>Data de Cadastro:</strong> <span id="displayDataCadastro"></span></p>
+            <p><strong>Tipo de Piso:</strong> <span id="displayTipoPisoUnidade"></span></p>
+            <p><strong>Tipo de Parede:</strong> <span id="displayTipoParedeUnidade"></span></p>
 
             <h4>Adicionar Nova Medida</h4>
             <div class="form-group">
@@ -94,25 +112,10 @@
                     <input type="number" id="altura" name="altura" step="0.01">
                 </div>
             </div>
+
             <div class="form-group">
                 <label for="metragem">Metragem (m²):</label>
                 <input type="number" id="metragem" name="metragem" step="0.01" required>
-            </div>
-            <div class="form-group">
-                <label>Tipo de Piso:</label>
-                <div class="checkbox-group" id="tipo_piso_checkboxes">
-                    {% for tipo in tipos_piso %}
-                    <label><input type="checkbox" name="tipo_piso" value="{{ tipo }}"> {{ tipo }}</label>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Tipo de Parede:</label>
-                <div class="checkbox-group" id="tipo_parede_checkboxes">
-                    {% for tipo in tipos_parede %}
-                    <label><input type="checkbox" name="tipo_parede" value="{{ tipo }}"> {{ tipo }}</label>
-                    {% endfor %}
-                </div>
             </div>
             <div class="form-group">
                 <label for="area_externa_coberta">Área Externa Coberta (m²):</label>
@@ -147,10 +150,12 @@
             const excluirMedidaBtn = document.getElementById('excluirMedidaBtn');
             const excluirUnidadeBtn = document.getElementById('excluirUnidadeBtn');
 
-            // Adicionado para limpar checkboxes
+            // Checkboxes da MEDIDA (Tipo de Medida)
             const tipoMedidaCheckboxes = document.querySelectorAll('#tipo_medida_checkboxes input[type="checkbox"]');
-            const tipoPisoCheckboxes = document.querySelectorAll('#tipo_piso_checkboxes input[type="checkbox"]');
-            const tipoParedeCheckboxes = document.querySelectorAll('#tipo_parede_checkboxes input[type="checkbox"]');
+            // Checkboxes da UNIDADE (Tipo de Piso e Parede)
+            const tipoPisoUnidadeCheckboxes = document.querySelectorAll('#tipo_piso_unidade_checkboxes input[type="checkbox"]');
+            const tipoParedeUnidadeCheckboxes = document.querySelectorAll('#tipo_parede_unidade_checkboxes input[type="checkbox"]');
+
 
             // Novos elementos para cálculo de vidro
             const vidroCalculationFields = document.getElementById('vidroCalculationFields');
@@ -181,6 +186,15 @@
                     data[key] = value;
                 });
 
+                // Coleta os valores dos checkboxes de PISO e PAREDE da UNIDADE
+                data.tipo_piso_unidade = Array.from(tipoPisoUnidadeCheckboxes)
+                                           .filter(checkbox => checkbox.checked)
+                                           .map(checkbox => checkbox.value);
+                data.tipo_parede_unidade = Array.from(tipoParedeUnidadeCheckboxes)
+                                              .filter(checkbox => checkbox.checked)
+                                              .map(checkbox => checkbox.value);
+
+
                 try {
                     const response = await fetch('/salvar_unidade', {
                         method: 'POST',
@@ -195,6 +209,9 @@
                         showMessage(result.message, 'success');
                         cadastroForm.reset(); // Limpa o formulário de unidade após o sucesso
                         document.getElementById('data').value = "{{ data_hoje }}";
+                        // Limpa os checkboxes de piso/parede da unidade
+                        tipoPisoUnidadeCheckboxes.forEach(checkbox => checkbox.checked = false);
+                        tipoParedeUnidadeCheckboxes.forEach(checkbox => checkbox.checked = false);
                         carregarListaUnidadesSalvas(); // Recarrega a lista de unidades salvas
                     } else {
                         const errorData = await response.json();
@@ -250,6 +267,7 @@
                     excluirUnidadeBtn.style.display = 'block';
                     atualizarListaMedidas();
                 } else {
+                    unidadeSelecionada = null;
                     medidasForm.style.display = 'none';
                     medidaList.innerHTML = '';
                     excluirMedidaBtn.style.display = 'none';
@@ -274,6 +292,10 @@
                         document.getElementById('displayResponsavel').textContent = unidadeData.responsavel || 'N/A';
                         document.getElementById('displayQtdFunc').textContent = unidadeData.qtd_func || 'N/A';
                         document.getElementById('displayDataCadastro').textContent = unidadeData.data_cadastro || 'N/A';
+                        // EXIBINDO TIPO DE PISO E PAREDE DA UNIDADE
+                        document.getElementById('displayTipoPisoUnidade').textContent = Array.isArray(unidadeData.tipo_piso) ? unidadeData.tipo_piso.join(', ') : (unidadeData.tipo_piso || 'N/A');
+                        document.getElementById('displayTipoParedeUnidade').textContent = Array.isArray(unidadeData.tipo_parede) ? unidadeData.tipo_parede.join(', ') : (unidadeData.tipo_parede || 'N/A');
+
 
                         medidaList.innerHTML = '';
                         selectedMedidaIndex = -1;
@@ -291,13 +313,6 @@
                                 if (medida.largura && medida.altura) {
                                     displayText += ` (L: ${medida.largura}m, A: ${medida.altura}m)`;
                                 }
-
-                                if (medida.tipo_piso && Array.isArray(medida.tipo_piso) && medida.tipo_piso.length > 0) displayText += `, Piso: ${medida.tipo_piso.join(', ')}`;
-                                else if (medida.tipo_piso && !Array.isArray(medida.tipo_piso)) displayText += `, Piso: ${medida.tipo_piso}`;
-
-                                if (medida.tipo_parede && Array.isArray(medida.tipo_parede) && medida.tipo_parede.length > 0) displayText += `, Parede: ${medida.tipo_parede.join(', ')}`;
-                                else if (medida.tipo_parede && !Array.isArray(medida.tipo_parede)) displayText += `, Parede: ${medida.tipo_parede}`;
-
 
                                 if (medida.area_externa_coberta) displayText += `, Área Cob.: ${medida.area_externa_coberta} m²`;
                                 if (medida.area_externa_descoberta) displayText += `, Área Descob.: ${medida.area_externa_descoberta} m²`;
@@ -353,8 +368,6 @@
                     unidade: unidadeSelecionada,
                     tipo_medida: selectedTipoMedida,
                     metragem: parseFloat(metragemInput.value), // Converter para número
-                    tipo_piso: Array.from(tipoPisoCheckboxes).filter(checkbox => checkbox.checked).map(checkbox => checkbox.value),
-                    tipo_parede: Array.from(tipoParedeCheckboxes).filter(checkbox => checkbox.checked).map(checkbox => checkbox.value),
                     area_externa_coberta: parseFloat(document.getElementById('area_externa_coberta').value) || 0, // Default 0 se vazio
                     area_externa_descoberta: parseFloat(document.getElementById('area_externa_descoberta').value) || 0, // Default 0 se vazio
                     obs: document.getElementById('obs').value
@@ -470,8 +483,6 @@
             function clearMedidasForm() {
                 medidasForm.reset(); // Limpa campos de texto/número
                 tipoMedidaCheckboxes.forEach(checkbox => checkbox.checked = false);
-                tipoPisoCheckboxes.forEach(checkbox => checkbox.checked = false);
-                tipoParedeCheckboxes.forEach(checkbox => checkbox.checked = false);
                 vidroCalculationFields.style.display = 'none'; // Esconde os campos de vidro
                 larguraInput.value = '';
                 alturaInput.value = '';
@@ -486,8 +497,6 @@
 
                     if (selectedTypes.includes("Vidro")) {
                         vidroCalculationFields.style.display = 'block';
-                        // Metragem não será required diretamente se houver largura/altura
-                        // mas manter required para garantir que um valor é inserido, seja manual ou calculado.
                     } else {
                         vidroCalculationFields.style.display = 'none';
                         larguraInput.value = ''; // Limpa os valores

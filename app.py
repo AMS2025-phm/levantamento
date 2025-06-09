@@ -64,6 +64,10 @@ def salvar_unidade():
         data_cadastro = data.get('data')
         responsavel = data.get('responsavel')
         qtd_func = data.get('qtd_func')
+        # NOVOS CAMPOS: TIPO DE PISO E PAREDE DA UNIDADE
+        tipo_piso_unidade = data.get('tipo_piso_unidade', [])
+        tipo_parede_unidade = data.get('tipo_parede_unidade', [])
+
 
         if not all([localidade, unidade, data_cadastro, responsavel, qtd_func]):
             return jsonify({"status": "error", "message": "Todos os campos da unidade são obrigatórios!"}), 400
@@ -79,6 +83,8 @@ def salvar_unidade():
             'data_cadastro': data_cadastro,
             'responsavel': responsavel,
             'qtd_func': qtd_func,
+            'tipo_piso': tipo_piso_unidade,   # Salva tipo de piso da unidade
+            'tipo_parede': tipo_parede_unidade, # Salva tipo de parede da unidade
             'medidas': [] # Inicializa lista de medidas
         }
 
@@ -90,28 +96,19 @@ def salvar_unidade():
         sheet = workbook.active
         sheet.title = "Dados da Unidade"
 
-        # Cabeçalhos
-        sheet.append(["Localidade", "Unidade", "Data de Cadastro", "Responsável", "Quantidade de Funcionários"])
+        # Cabeçalhos atualizados para incluir os novos campos
+        sheet.append(["Localidade", "Unidade", "Data de Cadastro", "Responsável", "Quantidade de Funcionários", "Tipo de Piso da Unidade", "Tipo de Parede da Unidade"])
 
-        # Dados da unidade
-        sheet.append([localidade, unidade, data_cadastro, responsavel, qtd_func])
-
-        # Se houver medidas, adicioná-las também (opcional, dependendo do que você quer no Excel inicial)
-        # Para incluir medidas aqui, você precisaria carregar os dados de 'medidas' da unidade recém-salva
-        # E formatar as listas de checkboxes para uma string para a célula do Excel.
-        # Exemplo (se for adicionar cabeçalhos para medidas):
-        # sheet.append(["Tipo de Medida", "Metragem", "Tipo de Piso", "Tipo de Parede", "Área Coberta", "Área Descoberta", "Observações"])
-        # for medida in dados[localidade][unidade]['medidas']:
-        #     sheet.append([
-        #         ", ".join(medida.get('tipo_medida', [])),
-        #         medida.get('metragem'),
-        #         ", ".join(medida.get('tipo_piso', [])),
-        #         ", ".join(medida.get('tipo_parede', [])),
-        #         medida.get('area_externa_coberta'),
-        #         medida.get('area_externa_descoberta'),
-        #         medida.get('obs')
-        #     ])
-
+        # Dados da unidade atualizados
+        sheet.append([
+            localidade,
+            unidade,
+            data_cadastro,
+            responsavel,
+            qtd_func,
+            ", ".join(tipo_piso_unidade),   # Junta a lista em uma string para o Excel
+            ", ".join(tipo_parede_unidade)  # Junta a lista em uma string para o Excel
+        ])
 
         workbook.save(output)
         excel_content = output.getvalue()
@@ -170,7 +167,11 @@ def get_unidade_data(unidade_nome):
     dados = carregar_dados()
     for localidade, unidades in dados.items():
         if unidade_nome in unidades:
-            return jsonify(unidades[unidade_nome])
+            # Garante que tipo_piso e tipo_parede sejam listas, mesmo se estiverem vazios ou não existirem
+            unidade_data = unidades[unidade_nome]
+            unidade_data['tipo_piso'] = unidade_data.get('tipo_piso', [])
+            unidade_data['tipo_parede'] = unidade_data.get('tipo_parede', [])
+            return jsonify(unidade_data)
     return jsonify({"error": "Unidade não encontrada"}), 404
 
 @app.route('/salvar_medidas', methods=['POST'])
@@ -180,26 +181,29 @@ def salvar_medidas():
         localidade = data.get('localidade')
         unidade = data.get('unidade')
 
-        # Captura todos os dados de medida
-        # Garante que os campos de checkbox sejam sempre listas
         nova_medida = {
-            "tipo_medida": data.get('tipo_medida', []), # Agora espera uma lista
+            "tipo_medida": data.get('tipo_medida', []),
             "metragem": data.get('metragem'),
-            "tipo_piso": data.get('tipo_piso', []),     # Agora espera uma lista
-            "tipo_parede": data.get('tipo_parede', []), # Agora espera uma lista
             "area_externa_coberta": data.get('area_externa_coberta'),
             "area_externa_descoberta": data.get('area_externa_descoberta'),
-            "obs": data.get('obs')
+            "obs": data.get('obs'),
+            "largura": data.get('largura'),
+            "altura": data.get('altura')
         }
 
-        # Validação para campos que antes eram required e agora são arrays
-        # É importante que 'tipo_medida' tenha pelo menos uma seleção
+        # Validação
         if not all([localidade, unidade, nova_medida['metragem']]) or not nova_medida['tipo_medida']:
             return jsonify({"status": "error", "message": "Campos essenciais da medida (localidade, unidade, tipo de medida e metragem) são obrigatórios!"}), 400
 
         dados = carregar_dados()
 
         if localidade in dados and unidade in dados[localidade]:
+            # Remove tipo_piso e tipo_parede da medida, se existirem (para dados antigos)
+            if 'tipo_piso' in nova_medida:
+                del nova_medida['tipo_piso']
+            if 'tipo_parede' in nova_medida:
+                del nova_medida['tipo_parede']
+
             dados[localidade][unidade]['medidas'].append(nova_medida)
             salvar_dados(dados)
             return jsonify({"status": "success", "message": "Medida adicionada com sucesso!"}), 200
