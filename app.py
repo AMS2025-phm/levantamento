@@ -36,7 +36,10 @@ FIXED_RECIPIENT_EMAIL = "comercialservico2025@gmail.com" # Destinatário fixo
 def carregar_dados():
     if os.path.exists(ARQUIVO_DADOS):
         with open(ARQUIVO_DADOS, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {} # Retorna vazio se o arquivo estiver corrompido/vazio
     return {}
 
 # Função para salvar dados no arquivo JSON
@@ -57,7 +60,7 @@ def salvar_unidade():
     try:
         data = request.json
         localidade = data.get('localidade')
-        unidade = data.get('unidade') # <-- Alteração: Obter o nome da unidade
+        unidade = data.get('unidade')
         data_cadastro = data.get('data')
         responsavel = data.get('responsavel')
         qtd_func = data.get('qtd_func')
@@ -70,7 +73,7 @@ def salvar_unidade():
         # Garante que a localidade exista
         if localidade not in dados:
             dados[localidade] = {}
-        
+
         # Adiciona ou atualiza a unidade na localidade
         dados[localidade][unidade] = {
             'data_cadastro': data_cadastro,
@@ -78,7 +81,7 @@ def salvar_unidade():
             'qtd_func': qtd_func,
             'medidas': [] # Inicializa lista de medidas
         }
-        
+
         salvar_dados(dados)
 
         # Geração do Excel e envio por e-mail
@@ -89,9 +92,26 @@ def salvar_unidade():
 
         # Cabeçalhos
         sheet.append(["Localidade", "Unidade", "Data de Cadastro", "Responsável", "Quantidade de Funcionários"])
-        
+
         # Dados da unidade
         sheet.append([localidade, unidade, data_cadastro, responsavel, qtd_func])
+
+        # Se houver medidas, adicioná-las também (opcional, dependendo do que você quer no Excel inicial)
+        # Para incluir medidas aqui, você precisaria carregar os dados de 'medidas' da unidade recém-salva
+        # E formatar as listas de checkboxes para uma string para a célula do Excel.
+        # Exemplo (se for adicionar cabeçalhos para medidas):
+        # sheet.append(["Tipo de Medida", "Metragem", "Tipo de Piso", "Tipo de Parede", "Área Coberta", "Área Descoberta", "Observações"])
+        # for medida in dados[localidade][unidade]['medidas']:
+        #     sheet.append([
+        #         ", ".join(medida.get('tipo_medida', [])),
+        #         medida.get('metragem'),
+        #         ", ".join(medida.get('tipo_piso', [])),
+        #         ", ".join(medida.get('tipo_parede', [])),
+        #         medida.get('area_externa_coberta'),
+        #         medida.get('area_externa_descoberta'),
+        #         medida.get('obs')
+        #     ])
+
 
         workbook.save(output)
         excel_content = output.getvalue()
@@ -105,12 +125,11 @@ def salvar_unidade():
         body = f"Olá,\n\nOs dados da unidade '{unidade}' foram cadastrados com sucesso.\n\nAtenciosamente,\nSeu Sistema de Cadastro"
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
-        part = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet') # MIME Type específico para .xlsx
-        part.set_payload(excel_content) # Usar o conteúdo lido e verificado
+        part = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        part.set_payload(excel_content)
         encoders.encode_base64(part)
-        
-        # <-- Alteração: Usar o nome da unidade para o arquivo
-        nome_arquivo = f'{unidade}.xlsx' 
+
+        nome_arquivo = f'{unidade}.xlsx'
         part.add_header('Content-Disposition', f'attachment; filename=\"{nome_arquivo}\"')
         msg.attach(part)
 
@@ -119,7 +138,7 @@ def salvar_unidade():
                 server.starttls()
                 server.login(EMAIL_USER, EMAIL_PASS)
                 server.send_message(msg)
-            
+
             return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"}), 200
 
         except smtplib.SMTPAuthenticationError as e:
@@ -142,9 +161,9 @@ def carregar_unidades():
     unidades_salvas = []
     for localidade in dados:
         for unidade in dados[localidade]:
-            unidades_salvas.append(unidade) # Adiciona apenas o nome da unidade
+            unidades_salvas.append(unidade)
 
-    return jsonify(unidades_salvas) # Retorna apenas a lista de nomes de unidades
+    return jsonify(unidades_salvas)
 
 @app.route('/get_unidade_data/<unidade_nome>')
 def get_unidade_data(unidade_nome):
@@ -160,20 +179,23 @@ def salvar_medidas():
         data = request.json
         localidade = data.get('localidade')
         unidade = data.get('unidade')
-        
+
         # Captura todos os dados de medida
+        # Garante que os campos de checkbox sejam sempre listas
         nova_medida = {
-            "tipo_medida": data.get('tipo_medida'),
+            "tipo_medida": data.get('tipo_medida', []), # Agora espera uma lista
             "metragem": data.get('metragem'),
-            "tipo_piso": data.get('tipo_piso'),
-            "tipo_parede": data.get('tipo_parede'),
+            "tipo_piso": data.get('tipo_piso', []),     # Agora espera uma lista
+            "tipo_parede": data.get('tipo_parede', []), # Agora espera uma lista
             "area_externa_coberta": data.get('area_externa_coberta'),
             "area_externa_descoberta": data.get('area_externa_descoberta'),
             "obs": data.get('obs')
         }
 
-        if not all([localidade, unidade, nova_medida['tipo_medida'], nova_medida['metragem']]):
-            return jsonify({"status": "error", "message": "Campos essenciais da medida (localidade, unidade, tipo e metragem) são obrigatórios!"}), 400
+        # Validação para campos que antes eram required e agora são arrays
+        # É importante que 'tipo_medida' tenha pelo menos uma seleção
+        if not all([localidade, unidade, nova_medida['metragem']]) or not nova_medida['tipo_medida']:
+            return jsonify({"status": "error", "message": "Campos essenciais da medida (localidade, unidade, tipo de medida e metragem) são obrigatórios!"}), 400
 
         dados = carregar_dados()
 
@@ -221,7 +243,6 @@ def excluir_unidade():
 
         if localidade in dados and unidade in dados[localidade]:
             del dados[localidade][unidade]
-            # Se a localidade ficar vazia, remove-a também
             if not dados[localidade]:
                 del dados[localidade]
             salvar_dados(dados)
