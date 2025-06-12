@@ -55,6 +55,15 @@
                 </div>
             </div>
 
+            <div class="form-group" id="risco_vidros_altos_group" style="display: none;">
+                 <label>Risco Associado aos Vidros Altos:</label>
+                 <div class="checkbox-group">
+                      <label>
+                          <input type="checkbox" name="vidros_altos_risco" value="Sim"> Apresenta Risco
+                      </label>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label>Paredes:</label>
                 <div class="checkbox-group">
@@ -162,9 +171,23 @@
             const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
             const exportAndEmailForm = document.getElementById('exportAndEmailForm');
             const selectedUnitToExportEmailInput = document.getElementById('selectedUnitToExportEmail');
+            const vidrosAltosRadios = document.querySelectorAll('input[name="vidros_altos"]');
+            const riscoVidrosAltosGroup = document.getElementById('risco_vidros_altos_group');
+            const riscoVidrosAltosCheckbox = document.querySelector('input[name="vidros_altos_risco"]');
 
             let medidasData = [];
             let selectedMedidaIndex = null;
+
+vidrosAltosRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (this.value === 'Sim') {
+            riscoVidrosAltosGroup.style.display = 'block';
+        } else {
+            riscoVidrosAltosGroup.style.display = 'none';
+            riscoVidrosAltosCheckbox.checked = false; // Desmarca ao selecionar "Não"
+        }
+    });
+});
 
             // Função para exibir mensagens
             function showMessage(message, type = 'info') {
@@ -331,16 +354,20 @@
             clearFormBtn.addEventListener('click', clearForm);
 
             function clearForm() {
-                cadastroForm.reset();
-                document.getElementById('data').value = new Date().toISOString().slice(0, 10);
-                document.querySelector('input[name="vidros_altos"][value="Não"]').checked = true;
-                medidasData = [];
-                selectedMedidaIndex = null;
-                atualizarListaMedidas();
-                // Desmarcar todos os checkboxes de piso, parede e tipo_medida
-                document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-                localidadeUnidadeSelect.value = ""; // Limpa a seleção do dropdown
-            }
+    cadastroForm.reset();
+    document.getElementById('data').value = new Date().toISOString().slice(0, 10);
+    document.querySelector('input[name="vidros_altos"][value="Não"]').checked = true;
+
+    // Adicione estas linhas
+    riscoVidrosAltosGroup.style.display = 'none';
+    riscoVidrosAltosCheckbox.checked = false;
+
+    medidasData = [];
+    selectedMedidaIndex = null;
+    atualizarListaMedidas();
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    localidadeUnidadeSelect.value = ""; 
+}
 
             carregarUnidadeBtn.addEventListener('click', async () => {
                 const selectedValue = localidadeUnidadeSelect.value;
@@ -375,6 +402,14 @@
 
                         // Marcar radio button de vidros_altos
                         document.querySelector(`input[name="vidros_altos"][value="${data.vidros_altos || 'Não'}"]`).checked = true;
+if (data.vidros_altos === 'Sim') {
+    riscoVidrosAltosGroup.style.display = 'block';
+    riscoVidrosAltosCheckbox.checked = data.vidros_altos_risco || false;
+} else {
+    riscoVidrosAltosGroup.style.display = 'none';
+    riscoVidrosAltosCheckbox.checked = false;
+}
+
 
                         // Resetar e marcar checkboxes de paredes
                         document.querySelectorAll('input[name^="parede_"]').forEach(cb => cb.checked = false);

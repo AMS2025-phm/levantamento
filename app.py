@@ -89,6 +89,7 @@ def salvar_unidade():
             piso_selecionado.append(tipo_piso)
 
     vidros_altos = request.form.get('vidros_altos', 'Não')
+vidros_altos_risco = 'vidros_altos_risco' in request.form if vidros_altos == 'Sim' else False
 
     paredes_selecionadas = []
     for tipo_parede in TIPOS_PAREDE:
@@ -117,7 +118,8 @@ def salvar_unidade():
         "qtd_func": qtd_func,
         "piso": piso_selecionado,
         "vidros_altos": vidros_altos,
-        "paredes": paredes_selecionadas,
+        "vidros_altos_risco": vidros_altos_risco, # Adicione esta linha
+	"paredes": paredes_selecionadas,
         "estacionamento": estacionamento,
         "gramado": gramado,
         "curativo": curativo,
@@ -167,7 +169,7 @@ def exportar_excel_e_enviar_email():
     ws_detalhe.title = "Detalhe" 
 
     ws_detalhe.append(["Localidade", "Unidade", "Data", "Responsável", "Tipo de Piso", 
-                       "Vidros Altos", "Paredes", "Estacionamento", "Gramado", 
+                       "Vidros Altos", , "Vidros Altos - Risco""Paredes", "Estacionamento", "Gramado", 
                        "Sala de Curativo", "Sala de Vacina", "Qtd Funcionários"])
     
     ws_detalhe.append([
@@ -177,6 +179,7 @@ def exportar_excel_e_enviar_email():
         info.get("responsavel", ""),
         ", ".join(info.get("piso", [])), 
         info.get("vidros_altos", ""),
+        "Sim" if info.get("vidros_altos_risco") else "Não", # Adicione esta linha
         ", ".join(info.get("paredes", [])),
         "Sim" if info.get("estacionamento") else "Não",
         "Sim" if info.get("gramado") else "Não",
