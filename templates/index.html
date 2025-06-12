@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Localidades e Medidas</title>
+    <title>Levantamento de Medidas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>Cadastro de Localidades e Medidas por Unidade</h1>
+        <h1>Levantamento de Medidas por Unidade</h1>
 
         <form id="cadastroForm">
             <div class="form-group">
@@ -54,6 +54,14 @@
                     </label>
                 </div>
             </div>
+
+<div class="form-group" id="riscoVidrosGroup" style="display: none;">
+    <label>
+        <input type="checkbox" name="vidros_risco" id="vidros_risco">
+        Representa risco
+    </label>
+</div>
+
 
             <div class="form-group">
                 <label>Paredes:</label>
@@ -107,6 +115,7 @@
             </div>
             <div class="button-group">
                 <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
+<button type="button" id="addMultipleMedidasBtn" class="btn btn-secondary">Inserir Múltiplas Vezes</button>
                 <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
                 <button type="button" id="repeatMedidaBtn" class="btn btn-secondary">Repetir Medida</button>
             </div>
@@ -161,6 +170,19 @@
             const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
             const exportAndEmailForm = document.getElementById('exportAndEmailForm');
             const selectedUnitToExportEmailInput = document.getElementById('selectedUnitToExportEmail');
+const vidrosAltosRadios = document.querySelectorAll('input[name="vidros_altos"]');
+const riscoVidrosGroup = document.getElementById('riscoVidrosGroup');
+const riscoVidrosCheckbox = document.getElementById('vidros_risco');
+
+function atualizarRiscoVisibilidade() {
+    const selecionado = document.querySelector('input[name="vidros_altos"]:checked');
+    riscoVidrosGroup.style.display = (selecionado && selecionado.value === 'Sim') ? 'block' : 'none';
+    if (selecionado && selecionado.value !== 'Sim') {
+        riscoVidrosCheckbox.checked = false;
+    }
+}
+vidrosAltosRadios.forEach(r => r.addEventListener('change', atualizarRiscoVisibilidade));
+atualizarRiscoVisibilidade();
 
             let medidasData = [];
             let selectedMedidaIndex = null;
@@ -216,6 +238,42 @@
                     showMessage('Comprimento e largura devem ser números positivos.', 'error');
                     return;
                 }
+const addMultipleMedidasBtn = document.getElementById('addMultipleMedidasBtn');
+addMultipleMedidasBtn.addEventListener('click', () => {
+    const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
+    const tiposSelecionados = Array.from(tipoMedidaCheckboxes).map(cb => cb.value);
+    const comprimentoInput = document.getElementById('comprimento');
+    const larguraInput = document.getElementById('largura');
+    const comprimento = parseFloat(comprimentoInput.value.replace(',', '.'));
+    const largura = parseFloat(larguraInput.value.replace(',', '.'));
 
+    if (tiposSelecionados.length === 0) {
+        showMessage('Selecione ao menos um tipo de medida.', 'warning');
+        return;
+    }
+    if (isNaN(comprimento) || isNaN(largura) || comprimento <= 0 || largura <= 0) {
+        showMessage('Comprimento e largura devem ser números positivos.', 'error');
+        return;
+    }
+
+    const repeticoes = prompt("Quantas vezes deseja inserir essa medida?", "1");
+    const num = parseInt(repeticoes, 10);
+    if (isNaN(num) || num <= 0) {
+        showMessage('Digite um número válido maior que zero.', 'warning');
+        return;
+    }
+
+    const area = comprimento * largura;
+    for (let i = 0; i < num; i++) {
+        tiposSelecionados.forEach(tipo => {
+            medidasData.push([tipo, comprimento, largura, area]);
+        });
+    }
+
+    comprimentoInput.value = '';
+    larguraInput.value = '';
+    selectedMedidaIndex = null;
+    atualizarListaMedidas();
+});
                 const area = comprimento * largura;
       
