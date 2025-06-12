@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 from email import encoders
 
 app = Flask(__name__)
-# Chave secreta para sessões (necessária para flash messages)
+# Chave secreta para sessões (essencial para login e flash messages)
 app.secret_key = os.urandom(24)
 
 # Nomes dos arquivos de dados
@@ -58,14 +58,35 @@ def login():
         username = request.form['username']
         password = request.form['password']
         users = carregar_dados(ARQUIVO_USUARIOS)
+        
         if username in users and users[username] == password:
             session['logged_in'] = True
             session['username'] = username
-            flash('Login bem-sucedido!', 'success')
             return redirect(url_for('index'))
         else:
             flash('Nome de usuário ou senha inválidos.', 'error')
+            
     return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        users = carregar_dados(ARQUIVO_USUARIOS)
+
+        if username in users:
+            flash('Este nome de usuário já existe.', 'error')
+        elif password != confirm_password:
+            flash('As senhas não coincidem.', 'error')
+        else:
+            users[username] = password
+            salvar_dados(users, ARQUIVO_USUARIOS)
+            flash('Cadastro realizado com sucesso! Faça o login.', 'success')
+            return redirect(url_for('login'))
+            
+    return render_template('register.html')
 
 @app.route('/logout')
 def logout():
@@ -108,7 +129,6 @@ def salvar_unidade():
     if localidade not in localidades:
         localidades[localidade] = {}
 
-    # ATUALIZAÇÃO: Obter o valor do checkbox de risco
     vidros_altos = data.get('vidros_altos', 'Não')
     vidros_altos_risco = data.get('vidros_altos_risco', False) if vidros_altos == 'Sim' else False
 
@@ -119,7 +139,7 @@ def salvar_unidade():
         "piso": data.get('piso', []),
         "paredes": data.get('paredes', []),
         "vidros_altos": vidros_altos,
-        "vidros_altos_risco": vidros_altos_risco, # Salva a nova informação
+        "vidros_altos_risco": vidros_altos_risco,
         "estacionamento": data.get('estacionamento', False),
         "gramado": data.get('gramado', False),
         "curativo": data.get('curativo', False),
@@ -167,12 +187,11 @@ def deletar_unidade():
 
     if localidade in localidades and unidade in localidades[localidade]:
         del localidades[localidade][unidade]
-        if not localidades[localidade]: # Se a localidade ficar vazia, remove-a
+        if not localidades[localidade]:
             del localidades[localidade]
         salvar_dados(localidades, ARQUIVO_DADOS)
         return jsonify({"status": "success", "message": "Unidade deletada com sucesso."})
     return jsonify({"status": "error", "message": "Unidade não encontrada."}), 404
-
 
 @app.route('/exportar', methods=['POST'])
 def exportar_excel_e_enviar_email():
@@ -188,11 +207,9 @@ def exportar_excel_e_enviar_email():
 
     wb = openpyxl.Workbook()
     
-    # Aba Detalhes
     ws_detalhe = wb.active
     ws_detalhe.title = "Detalhe"
     
-    # ATUALIZAÇÃO: Adicionar a nova coluna "Vidros Altos - Risco"
     ws_detalhe.append([
         "Localidade", "Unidade", "Data", "Responsável", "Tipo de Piso", 
         "Vidros Altos", "Vidros Altos - Risco", "Paredes", "Estacionamento", 
@@ -205,7 +222,7 @@ def exportar_excel_e_enviar_email():
         info.get("responsavel", ""),
         ", ".join(info.get("piso", [])), 
         info.get("vidros_altos", ""),
-        "Sim" if info.get("vidros_altos_risco") else "Não", # Adiciona o valor
+        "Sim" if info.get("vidros_altos_risco") else "Não",
         ", ".join(info.get("paredes", [])),
         "Sim" if info.get("estacionamento") else "Não",
         "Sim" if info.get("gramado") else "Não",
@@ -214,7 +231,6 @@ def exportar_excel_e_enviar_email():
         info.get("qtd_func", "")
     ])
 
-    # Aba Medidas
     ws_medidas = wb.create_sheet(title="Medidas")
     ws_medidas.append(["Tipo", "Altura (m)", "Largura (m)", "Quantidade", "m² Total"])
     for medida in info.get("medidas", []):
@@ -224,13 +240,11 @@ def exportar_excel_e_enviar_email():
         m2_total = altura * largura * qtd
         ws_medidas.append([medida.get("tipo"), altura, largura, qtd, m2_total])
 
-    # Salvar em memória
     excel_buffer = io.BytesIO()
     wb.save(excel_buffer)
     excel_content = excel_buffer.getvalue()
     excel_buffer.close()
 
-    # Enviar E-mail
     if not all([EMAIL_USER, EMAIL_PASS, EMAIL_SERVER, FIXED_RECIPIENT_EMAIL]):
         return jsonify({"status": "error", "message": "Configurações de e-mail incompletas no servidor."}), 500
 
@@ -255,11 +269,11 @@ def exportar_excel_e_enviar_email():
             server.starttls()
             server.login(EMAIL_USER, EMAIL_PASS)
             server.send_message(msg)
-        return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"}), 200
-
+        return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"})
     except Exception as e:
         print(f"Erro ao enviar e-mail: {e}")
-        return jsonify({"status": "error", "message": f"Erro ao enviar e-mail: {e}"}), 500
+        return jsonify({"status": "error", "message": f"Erro ao enviar e-mail: {e}"})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Usar '0.0.0.0' para ser acessível na rede local
+    app.run(host='0.0.0.0', port=5000, debug=True)
