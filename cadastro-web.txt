@@ -1,0 +1,5 @@
+EMAIL_PASS sema yrkt gycu vfjx
+
+EMAIL_USER
+EMAIL_SERVER  smtp.gmail.com
+EMAIL_PORT 587

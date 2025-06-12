@@ -55,15 +55,6 @@
                 </div>
             </div>
 
-		<div class="form-group" id="riscoVidrosGroup" style="display: none;">
-    			<label>
-      			  <input type="checkbox" name="vidros_risco" id="vidros_risco">
-    			    Representa risco
-   			 </label>
-		</div>
-
-
-
             <div class="form-group">
                 <label>Paredes:</label>
                 <div class="checkbox-group">
@@ -116,8 +107,7 @@
             </div>
             <div class="button-group">
                 <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
-                <button type="button" id="addMultipleMedidasBtn" class="btn btn-secondary">Inserir Múltiplas Vezes</button>
-		<button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
+                <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
                 <button type="button" id="repeatMedidaBtn" class="btn btn-secondary">Repetir Medida</button>
             </div>
 
@@ -171,19 +161,6 @@
             const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
             const exportAndEmailForm = document.getElementById('exportAndEmailForm');
             const selectedUnitToExportEmailInput = document.getElementById('selectedUnitToExportEmail');
-	    const vidrosAltosRadios = document.querySelectorAll('input[name="vidros_altos"]');
-            const riscoVidrosGroup = document.getElementById('riscoVidrosGroup');
-            const riscoVidrosCheckbox = document.getElementById('vidros_risco');
-
-            function atualizarRiscoVisibilidade() {
-    		const selecionado = document.querySelector('input[name="vidros_altos"]:checked');
-    		riscoVidrosGroup.style.display = (selecionado && selecionado.value === 'Sim') ? 'block' : 'none';
-    		if (selecionado && selecionado.value !== 'Sim') {
-        	    riscoVidrosCheckbox.checked = false;
-    		}
-	   }
-	   vidrosAltosRadios.forEach(r => r.addEventListener('change', atualizarRiscoVisibilidade));
-	   atualizarRiscoVisibilidade(); // rodar ao carregar
 
             let medidasData = [];
             let selectedMedidaIndex = null;
@@ -199,31 +176,29 @@
                 }, 5000);
             }
 
-	function atualizarListaMedidas() {
-    		medidaList.innerHTML = '';
-    		if (medidasData.length === 0) {
-        		const li = document.createElement('li');
-        		li.textContent = 'Nenhuma medida adicionada.';
-        		medidaList.appendChild(li);
-    		} else {
-        		[...medidasData].reverse().forEach((medida, reversedIndex) => {
-            			const index = medidasData.length - 1 - reversedIndex;
-            			const li = document.createElement('li');
-            			li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
-            			if (index === selectedMedidaIndex) {
-                			li.classList.add('selected');
-            			}
-            			li.addEventListener('click', () => {
-                			selectedMedidaIndex = index;
-                			atualizarListaMedidas();
-            			});
-            			medidaList.appendChild(li);
-        		});
-    		}
-    		medidasJsonInput.value = JSON.stringify(medidasData);
-	}
-
-            
+            function atualizarListaMedidas() {
+                medidaList.innerHTML = '';
+                if (medidasData.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Nenhuma medida adicionada.';
+                    medidaList.appendChild(li);
+                } else {
+                    medidasData.forEach((medida, index) => {
+                        const li = document.createElement('li');
+                        // Medida é um array: [tipo, comp, larg, area]
+                        li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
+                        if (index === selectedMedidaIndex) {
+                            li.classList.add('selected');
+                        }
+                        li.addEventListener('click', () => {
+                            selectedMedidaIndex = index;
+                            atualizarListaMedidas();
+                        });
+                        medidaList.appendChild(li);
+                    });
+                }
+                medidasJsonInput.value = JSON.stringify(medidasData);
+            }
 
             addMedidaBtn.addEventListener('click', () => {
                 const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
@@ -249,52 +224,10 @@
 
                 comprimentoInput.value = '';
                 larguraInput.value = '';
-                // tipoMedidaCheckboxes.forEach(cb => cb.checked = false); // Desmarcar
+                tipoMedidaCheckboxes.forEach(cb => cb.checked = false); // Desmarcar
                 selectedMedidaIndex = null; // Limpa a seleção
                 atualizarListaMedidas();
             });
-
-	const addMultipleMedidasBtn = document.getElementById('addMultipleMedidasBtn');
-		addMultipleMedidasBtn.addEventListener('click', () => {
-    			const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
-    			const tiposSelecionados = Array.from(tipoMedidaCheckboxes).map(cb => cb.value);
-    			const comprimentoInput = document.getElementById('comprimento');
-    			const larguraInput = document.getElementById('largura');
-    			const comprimento = parseFloat(comprimentoInput.value.replace(',', '.'));
-    			const largura = parseFloat(larguraInput.value.replace(',', '.'));
-
-    			if (tiposSelecionados.length === 0) {
-        			showMessage('Selecione ao menos um tipo de medida.', 'warning');
-        			return;
-    			}
-    			if (isNaN(comprimento) || isNaN(largura) || comprimento <= 0 || largura <= 0) {
-        			showMessage('Comprimento e largura devem ser números positivos.', 'error');
-        			return;
-    			}
-
-    			const repeticoes = prompt("Quantas vezes deseja inserir essa medida?", "1");
-    			const num = parseInt(repeticoes, 10);
-    			if (isNaN(num) || num <= 0) {
-        			showMessage('Digite um número válido maior que zero.', 'warning');
-        			return;
-    			}
-
-    			const area = comprimento * largura;
-    			for (let i = 0; i < num; i++) {
-        			tiposSelecionados.forEach(tipo => {
-            				medidasData.push([tipo, comprimento, largura, area]);
-        			});
-    			}
-
-    			comprimentoInput.value = '';
-    			larguraInput.value = '';
-    			// tipoMedidaCheckboxes.forEach(cb => cb.checked = false);
-    			selectedMedidaIndex = null;
-    			atualizarListaMedidas();
-	});
-
-
-
 
             removeMedidaBtn.addEventListener('click', () => {
                 if (selectedMedidaIndex !== null) {
@@ -397,8 +330,6 @@
 
                         // Marcar radio button de vidros_altos
                         document.querySelector(`input[name="vidros_altos"][value="${data.vidros_altos || 'Não'}"]`).checked = true;
-			document.getElementById('vidros_risco').checked = data.vidros_risco || false;
-			atualizarRiscoVisibilidade();
 
                         // Resetar e marcar checkboxes de paredes
                         document.querySelectorAll('input[name^="parede_"]').forEach(cb => cb.checked = false);

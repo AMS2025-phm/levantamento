@@ -75,7 +75,6 @@ def salvar_unidade():
     """Salva os dados de uma unidade submetidos via formulário."""
     localidade = request.form['localidade'].strip()
     unidade = request.form['unidade'].strip()
-    vidros_risco = 'vidros_risco' in request.form
 
     if not localidade or not unidade:
         return jsonify({"status": "error", "message": "Localidade e Unidade são campos obrigatórios."}), 400
@@ -124,7 +123,6 @@ def salvar_unidade():
         "curativo": curativo,
         "vacina": vacina,
         "medidas": medidas
-	"vidros_risco": vidros_risco,
     }
     salvar_dados(localidades)
     return jsonify({"status": "success", "message": "Unidade salva com sucesso!"})
@@ -169,7 +167,7 @@ def exportar_excel_e_enviar_email():
     ws_detalhe.title = "Detalhe" 
 
     ws_detalhe.append(["Localidade", "Unidade", "Data", "Responsável", "Tipo de Piso", 
-                       "Vidros Altos", "Risco", "Paredes", "Estacionamento", "Gramado", 
+                       "Vidros Altos", "Paredes", "Estacionamento", "Gramado", 
                        "Sala de Curativo", "Sala de Vacina", "Qtd Funcionários"])
     
     ws_detalhe.append([
@@ -179,7 +177,6 @@ def exportar_excel_e_enviar_email():
         info.get("responsavel", ""),
         ", ".join(info.get("piso", [])), 
         info.get("vidros_altos", ""),
-	"Sim" if info.get("vidros_risco") else "Não",
         ", ".join(info.get("paredes", [])),
         "Sim" if info.get("estacionamento") else "Não",
         "Sim" if info.get("gramado") else "Não",
@@ -257,7 +254,7 @@ def exportar_excel_e_enviar_email():
     Responsável: {info.get('responsavel', 'Não informado')}
 
     Atenciosamente,
-    Equipe de Levantamento de dados
+    Seu Sistema de Cadastro
     """
     
     msg.attach(MIMEText(body, 'plain', 'utf-8'))
