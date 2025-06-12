@@ -177,29 +177,31 @@
                 }, 5000);
             }
 
-            function atualizarListaMedidas() {
-                medidaList.innerHTML = '';
-                if (medidasData.length === 0) {
-                    const li = document.createElement('li');
-                    li.textContent = 'Nenhuma medida adicionada.';
-                    medidaList.appendChild(li);
-                } else {
-                    medidasData.forEach((medida, index) => {
-                        const li = document.createElement('li');
-                        // Medida é um array: [tipo, comp, larg, area]
-                        li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
-                        if (index === selectedMedidaIndex) {
-                            li.classList.add('selected');
-                        }
-                        li.addEventListener('click', () => {
-                            selectedMedidaIndex = index;
-                            atualizarListaMedidas();
-                        });
-                        medidaList.appendChild(li);
-                    });
-                }
-                medidasJsonInput.value = JSON.stringify(medidasData);
-            }
+	function atualizarListaMedidas() {
+    		medidaList.innerHTML = '';
+    		if (medidasData.length === 0) {
+        		const li = document.createElement('li');
+        		li.textContent = 'Nenhuma medida adicionada.';
+        		medidaList.appendChild(li);
+    		} else {
+        		[...medidasData].reverse().forEach((medida, reversedIndex) => {
+            			const index = medidasData.length - 1 - reversedIndex;
+            			const li = document.createElement('li');
+            			li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
+            			if (index === selectedMedidaIndex) {
+                			li.classList.add('selected');
+            			}
+            			li.addEventListener('click', () => {
+                			selectedMedidaIndex = index;
+                			atualizarListaMedidas();
+            			});
+            			medidaList.appendChild(li);
+        		});
+    		}
+    		medidasJsonInput.value = JSON.stringify(medidasData);
+	}
+
+            
 
             addMedidaBtn.addEventListener('click', () => {
                 const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
