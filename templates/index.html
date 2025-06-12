@@ -5,34 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro de Localidades e Medidas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        /* Remova ou substitua os estilos anteriores de .main-wrapper e .logo-container por estes */
-        
-        .header-section {
-            display: flex;
-            align-items: center; /* Alinha o logo e o título verticalmente */
-            gap: 20px; /* Espaço entre o logo e o título */
-            margin-bottom: 20px; /* Espaço abaixo do cabeçalho */
-        }
-        
-        .header-section img {
-            height: 60px; /* Altura controlada para o logo */
-            width: auto; /* Largura automática para manter a proporção */
-        }
-        
-        .header-section h1 {
-            margin: 0; /* Remove a margem padrão do H1 para melhor alinhamento */
-            font-size: 1.8em; /* Ajuste o tamanho da fonte se necessário */
-        }
-    </style>
 </head>
 <body>
     <div class="container">
-        
-        <div class="header-section">
-            <img src="{{ url_for('static', filename='ams3.jpg') }}" alt="Logo AMS Multisserviços">
-            <h1>Levantamento de Medidas por Unidade</h1>
-        </div>
+        <h1>Cadastro de Localidades e Medidas por Unidade</h1>
 
         <form id="cadastroForm">
             <div class="form-group">
@@ -121,26 +97,25 @@
                     {% endfor %}
                 </div>
             </div>
-   	   <div class="dimension-inputs">
-                <div class="form-group">
-                    <label for="comprimento">Comprimento (m):</label>
-                    <input type="number" id="comprimento" step="0.01" min="0">
-                </div>
-                <div class="form-group">
-                    <label for="largura">Largura (m):</label>
-                    <input type="number" id="largura" step="0.01" min="0">
-                </div>
-            </div>         
-
+            <div class="form-group">
+                <label for="comprimento">Comprimento (m):</label>
+                <input type="number" id="comprimento" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label for="largura">Largura (m):</label>
+                <input type="number" id="largura" step="0.01" min="0">
+            </div>
             <div class="button-group">
                 <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
-                <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
+                <button type="button" id="addMultipleMedidasBtn" class="btn btn-secondary">Inserir Múltiplas Vezes</button>
+		<button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
                 <button type="button" id="repeatMedidaBtn" class="btn btn-secondary">Repetir Medida</button>
             </div>
 
             <h3>Medidas Adicionadas:</h3>
             <ul id="medidaList" class="medida-list">
-                </ul>
+                <!-- Medidas serão adicionadas aqui via JavaScript -->
+            </ul>
 
             <input type="hidden" id="medidas_json" name="medidas_json">
 
@@ -157,7 +132,8 @@
             <label for="localidadeUnidadeSelect">Selecionar Unidade:</label>
             <select id="localidadeUnidadeSelect" class="form-control">
                 <option value="">-- Selecione uma unidade --</option>
-                </select>
+                <!-- Opções serão preenchidas via JavaScript -->
+            </select>
         </div>
         <div class="button-group">
             <button type="button" id="carregarUnidadeBtn" class="btn btn-primary">Carregar Unidade</button>
@@ -174,7 +150,6 @@
     </div>
 
     <script>
-        // SEU SCRIPT JAVASCRIPT CONTINUA IGUAL AQUI
         document.addEventListener('DOMContentLoaded', function() {
             const cadastroForm = document.getElementById('cadastroForm');
             const addMedidaBtn = document.getElementById('addMedidaBtn');
@@ -254,6 +229,48 @@
                 selectedMedidaIndex = null; // Limpa a seleção
                 atualizarListaMedidas();
             });
+
+	const addMultipleMedidasBtn = document.getElementById('addMultipleMedidasBtn');
+		addMultipleMedidasBtn.addEventListener('click', () => {
+    			const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
+    			const tiposSelecionados = Array.from(tipoMedidaCheckboxes).map(cb => cb.value);
+    			const comprimentoInput = document.getElementById('comprimento');
+    			const larguraInput = document.getElementById('largura');
+    			const comprimento = parseFloat(comprimentoInput.value.replace(',', '.'));
+    			const largura = parseFloat(larguraInput.value.replace(',', '.'));
+
+    			if (tiposSelecionados.length === 0) {
+        			showMessage('Selecione ao menos um tipo de medida.', 'warning');
+        			return;
+    			}
+    			if (isNaN(comprimento) || isNaN(largura) || comprimento <= 0 || largura <= 0) {
+        			showMessage('Comprimento e largura devem ser números positivos.', 'error');
+        			return;
+    			}
+
+    			const repeticoes = prompt("Quantas vezes deseja inserir essa medida?", "1");
+    			const num = parseInt(repeticoes, 10);
+    			if (isNaN(num) || num <= 0) {
+        			showMessage('Digite um número válido maior que zero.', 'warning');
+        			return;
+    			}
+
+    			const area = comprimento * largura;
+    			for (let i = 0; i < num; i++) {
+        			tiposSelecionados.forEach(tipo => {
+            				medidasData.push([tipo, comprimento, largura, area]);
+        			});
+    			}
+
+    			comprimentoInput.value = '';
+    			larguraInput.value = '';
+    			tipoMedidaCheckboxes.forEach(cb => cb.checked = false);
+    			selectedMedidaIndex = null;
+    			atualizarListaMedidas();
+	});
+
+
+
 
             removeMedidaBtn.addEventListener('click', () => {
                 if (selectedMedidaIndex !== null) {
