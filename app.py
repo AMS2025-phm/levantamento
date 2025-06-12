@@ -207,6 +207,7 @@ def exportar_excel_e_enviar_email():
 
     wb = openpyxl.Workbook()
     
+    # Aba Detalhes (continua igual)
     ws_detalhe = wb.active
     ws_detalhe.title = "Detalhe"
     
@@ -231,23 +232,50 @@ def exportar_excel_e_enviar_email():
         info.get("qtd_func", "")
     ])
 
-    ws_medidas = wb.create_sheet(title="Medidas")
-    ws_medidas.append(["Tipo", "Altura (m)", "Largura (m)", "Quantidade", "m² Total"])
-    for medida in info.get("medidas", []):
-        altura = medida.get("altura") or 0
-        largura = medida.get("largura") or 0
-        qtd = medida.get("qtd") or 1
-        m2_total = altura * largura * qtd
-        ws_medidas.append([medida.get("tipo"), altura, largura, qtd, m2_total])
+    # ===== INÍCIO DA NOVA LÓGICA PARA ABAS DE MEDIDAS =====
+    
+    todas_as_medidas = info.get("medidas", [])
+    
+    # Define as categorias e os nomes das abas
+    categorias = {
+        "Vidros": [m for m in todas_as_medidas if m.get("tipo") == "Vidro"],
+        "Áreas Externas": [m for m in todas_as_medidas if m.get("tipo") == "Área Externa"],
+        "Áreas Internas": [m for m in todas_as_medidas if m.get("tipo") == "Área Interna"],
+        "Sanitários e Vestiários": [m for m in todas_as_medidas if m.get("tipo") == "Sanitário-Vestiário"]
+    }
+    
+    header_medidas = ["Tipo", "Altura (m)", "Largura (m)", "Quantidade", "m² Total"]
+    
+    # Itera sobre cada categoria e cria uma aba se houver dados
+    for nome_aba, medidas_da_categoria in categorias.items():
+        if not medidas_da_categoria:
+            continue # Pula para a próxima categoria se não houver medidas
 
+        # Cria a aba e adiciona o cabeçalho
+        ws = wb.create_sheet(title=nome_aba)
+        ws.append(header_medidas)
+        
+        # Adiciona os dados de cada medida na aba
+        for medida in medidas_da_categoria:
+            altura = medida.get("altura") or 0
+            largura = medida.get("largura") or 0
+            qtd = medida.get("qtd") or 1
+            m2_total = altura * largura * qtd
+            ws.append([medida.get("tipo"), altura, largura, qtd, m2_total])
+
+    # ===== FIM DA NOVA LÓGICA =====
+
+    # Salva o arquivo Excel em memória
     excel_buffer = io.BytesIO()
     wb.save(excel_buffer)
     excel_content = excel_buffer.getvalue()
     excel_buffer.close()
 
+    # Verifica as configurações de e-mail
     if not all([EMAIL_USER, EMAIL_PASS, EMAIL_SERVER, FIXED_RECIPIENT_EMAIL]):
         return jsonify({"status": "error", "message": "Configurações de e-mail incompletas no servidor."}), 500
 
+    # Monta e envia o e-mail
     nome_arquivo = f"Levantamento_{local}_{unidade}.xlsx"
     
     msg = MIMEMultipart()
@@ -275,5 +303,4 @@ def exportar_excel_e_enviar_email():
         return jsonify({"status": "error", "message": f"Erro ao enviar e-mail: {e}"})
 
 if __name__ == '__main__':
-    # Usar '0.0.0.0' para ser acessível na rede local
     app.run(host='0.0.0.0', port=5000, debug=True)
