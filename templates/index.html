@@ -221,7 +221,7 @@
                     medidasData[selectedMedidaIndex] = medida;
                     selectedMedidaIndex = null;
                 } else {
-                    medidasData.push(medida);
+                    medidasData.unshift(medida);  // Alterado de push() para unshift()
                 }
                 
                 atualizarListaMedidas();
