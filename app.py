@@ -70,6 +70,12 @@ def generate_excel_and_send_email(localidade, unidade, info):
     ws_detalhe.append(["Sala de Curativo", "Sim" if info.get("curativo") else "Não"])
     ws_detalhe.append(["Sala de Vacina", "Sim" if info.get("vacina") else "Não"])
     ws_detalhe.append(["Qtd Funcionários", info.get("qtd_func", "")])
+    
+    # NOVO: Adiciona a "Outra Área" se houver valor
+    outra_area_valor = info.get("outra_area", "")
+    if outra_area_valor:
+        ws_detalhe.append(["Outra Área", outra_area_valor])
+
 
     # Espaçamento
     ws_detalhe.append([]) 
@@ -107,7 +113,6 @@ def generate_excel_and_send_email(localidade, unidade, info):
 
     # Remove abas que não foram usadas (contêm apenas cabeçalho)
     for sheet_name, sheet_data in list(abas.items()):
-        # Verifica se a aba tem apenas 1 linha (o cabeçalho) ou se está completamente vazia
         if sheet_data["sheet"].max_row == 1 or (sheet_data["sheet"].max_row == 0 and sheet_data["sheet"].max_column == 0):
             wb.remove(sheet_data["sheet"])
             
@@ -155,6 +160,10 @@ def generate_excel_and_send_email(localidade, unidade, info):
 
     Data: {info.get('data', 'Não informada')}
     Responsável: {info.get('responsavel', 'Não informado')}
+    """
+    if outra_area_valor: # Adiciona ao corpo do email se houver valor
+        body += f"\nOutra Área: {outra_area_valor}"
+    body += """
 
     Atenciosamente,
     Seu Sistema de Cadastro
@@ -232,6 +241,8 @@ def salvar_unidade():
     gramado = 'gramado' in request.form
     curativo = 'curativo' in request.form
     vacina = 'vacina' in request.form
+    # NOVO: Obtém o valor de 'outra_area' do formulário
+    outra_area = request.form.get('outra_area', '').strip() 
 
     medidas_json_str = request.form.get('medidas_json', '[]')
     try:
@@ -251,7 +262,8 @@ def salvar_unidade():
         "gramado": gramado,
         "curativo": curativo,
         "vacina": vacina,
-        "medidas": medidas
+        "medidas": medidas,
+        "outra_area": outra_area # NOVO: Salva o valor da "Outra Área"
     }
 
     localidades = carregar_dados()
