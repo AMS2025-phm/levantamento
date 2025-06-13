@@ -176,18 +176,60 @@
                 setTimeout(() => messageArea.innerHTML = '', 5000);
             }
 
-            function atualizarListaMedidas() {
-                medidasList.innerHTML = '';
-                medidasData.forEach((medida, index) => {
-                    const li = document.createElement('li');
-                    li.textContent = `${medida.tipo} - Alt: ${medida.altura || 'N/A'}m, Larg: ${medida.largura || 'N/A'}m, Qtd: ${medida.qtd || 1}`;
-                    li.dataset.index = index;
-                    if (index === selectedMedidaIndex) {
-                        li.classList.add('selected');
-                    }
-                    medidasList.appendChild(li);
-                });
+           \\ function atualizarListaMedidas() {
+           \\     medidasList.innerHTML = '';
+           \\     medidasData.forEach((medida, index) => {
+           \\         const li = document.createElement('li');
+           \\         li.textContent = `${medida.tipo} - Alt: ${medida.altura || 'N/A'}m, Larg: ${medida.largura || 'N/A'}m, Qtd: ${medida.qtd || 1}`;
+           \\         li.dataset.index = index;
+           \\         if (index === selectedMedidaIndex) {
+           \\             li.classList.add('selected');
+           \\         }
+           \\         medidasList.appendChild(li);
+           \\     });
+           \\  }
+
+        function atualizarListaMedidas() {
+            listaMedidas.innerHTML = '';
+            if (medidasAtuais.length === 0) {
+                listaMedidas.innerHTML = '<li>Nenhuma medida registrada.</li>';
+                return;
             }
+            // AQUI ESTÁ A ÚNICA MUDANÇA SIGNIFICATIVA PARA INVERTER A ORDEM DE EXIBIÇÃO
+            // Cria uma cópia do array e inverte a ordem.
+            // O uso de `[...medidasAtuais]` cria uma nova referência de array,
+            // garantindo que não modificamos o array `medidasAtuais` original,
+            // o que é importante para a deleção pelo índice.
+            const medidasParaExibir = [...medidasAtuais].reverse();
+
+            medidasParaExibir.forEach((medida, index) => {
+                const li = document.createElement('li');
+                li.textContent = `Data: ${medida.data}, Tipo: ${medida.tipo_medida}, Valor: ${medida.valor} m², Observação: ${medida.observacao || 'N/A'}`;
+                
+                // IMPORTANTÍSSIMO: Para a deleção funcionar corretamente, precisamos do índice original da medida
+                // no array 'medidasAtuais', não o índice dentro do array 'medidasParaExibir' invertido.
+                // Isso porque o backend deleta pelo índice original.
+                const originalIndex = medidasAtuais.findIndex(m => 
+                    m.data === medida.data && 
+                    m.tipo_medida === medida.tipo_medida && 
+                    m.valor === medida.valor && 
+                    m.observacao === medida.observacao
+                );
+                li.dataset.index = originalIndex; // Armazena o índice original para uso na deleção.
+
+                li.addEventListener('click', () => {
+                    listaMedidas.querySelectorAll('li').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    li.classList.add('selected');
+                });
+                listaMedidas.appendChild(li);
+            });
+        }
+
+        // ... (restante do código existente, sem mudanças na lógica de salvar ou carregar) ...
+
+    });
             
             // NOVO: Event listener para mostrar/ocultar checkbox de risco
             vidrosAltosRadios.forEach(radio => {
