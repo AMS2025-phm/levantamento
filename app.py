@@ -9,6 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
+import re # Importar o módulo re
 
 app = Flask(__name__)
 
@@ -112,8 +113,21 @@ def generate_excel_and_send_email(localidade, unidade, info):
         print("Aviso: O arquivo Excel gerado está vazio.")
         raise Exception("O arquivo Excel gerado está vazio. Verifique os dados da unidade.")
 
-    nome_arquivo = f"{unidade}_{localidade}.xlsx".replace(" ", "_").replace("/", "_").replace("\\", "_").replace(":", "_").replace("*", "_").replace("?", "_").replace("\"", "_").replace("<", "_").replace(">", "_").replace("|", "_")
+    # Constrói o nome base do arquivo
+    base_nome = f"{unidade}_{localidade}"
+    # Remove caracteres inválidos para nomes de arquivo e substitui por underscore
+    # Permite apenas letras (incluindo acentuadas), números, espaços e hifens, depois substitui espaços e hifens por underscore.
+    # A regex [^a-zA-Z0-9_.-] substitui qualquer coisa que NÃO seja uma letra, número, underscore, ponto ou hífen por underscore.
+    # Em seguida, substitui múltiplos underscores por um único underscore e remove underscores extras no início/fim.
     
+    # Primeiro, substitua caracteres especiais por '_'
+    nome_arquivo_limpo = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚçÇ\s-]', '_', base_nome)
+    # Segundo, substitua múltiplos underscores, espaços e hífens por um único underscore
+    nome_arquivo_limpo = re.sub(r'[\s-]+', '_', nome_arquivo_limpo)
+    nome_arquivo_limpo = re.sub(r'_+', '_', nome_arquivo_limpo)
+    # Finalmente, remova underscores do início e do fim, e adicione a extensão .xlsx
+    nome_arquivo = f"{nome_arquivo_limpo.strip('_')}.xlsx"
+
     if not EMAIL_USER or not EMAIL_PASS or not EMAIL_SERVER:
         raise Exception("Configurações de e-mail incompletas no servidor. Verifique EMAIL_USER, EMAIL_PASS, EMAIL_SERVER no Render.")
 
@@ -258,11 +272,6 @@ def carregar_unidade():
         return jsonify({"status": "success", "data": localidades[local][unidade]}), 200
     else:
         return jsonify({"status": "error", "message": "Unidade não encontrada."}), 404
-
-# The original /exportar_excel_e_enviar_email route is no longer needed as its logic is integrated into /salvar_unidade
-# @app.route('/exportar_excel_e_enviar_email', methods=['POST'])
-# def exportar_excel_e_enviar_email():
-#    ... (this function is now removed/refactored)
 
 if __name__ == '__main__':
     app.run(debug=True)
