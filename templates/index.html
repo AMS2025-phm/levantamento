@@ -81,7 +81,11 @@
                     <label>
                         <input type="checkbox" name="vacina"> Sala de Vacina
                     </label>
-                </div>
+                    <label>
+                        <input type="checkbox" id="outra_area_checkbox" name="outra_area_checkbox"> Outra Área:
+                        <input type="text" id="outra_area_texto" name="outra_area_texto" placeholder="Descreva a área" disabled>
+                    </label>
+                    </div>
             </div>
 
             <hr>
@@ -150,6 +154,10 @@
             const localidadeUnidadeSelect = document.getElementById('localidadeUnidadeSelect');
             const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
 
+            // NOVOS ELEMENTOS
+            const outraAreaCheckbox = document.getElementById('outra_area_checkbox');
+            const outraAreaTexto = document.getElementById('outra_area_texto');
+
             let medidasData = [];
             let selectedMedidaIndex = null;
 
@@ -210,7 +218,7 @@
                     medidasData.push([tipo, comprimento, largura, area]);
                 });
 
-                comprimentoInput.value = '';
+                comprprimentoInput.value = '';
                 larguraInput.value = '';
                 selectedMedidaIndex = null;
                 atualizarListaMedidas();
@@ -282,10 +290,25 @@
                 }
             });
 
+            // NOVO: Lógica para habilitar/desabilitar o campo de texto da "Outra Área"
+            outraAreaCheckbox.addEventListener('change', () => {
+                outraAreaTexto.disabled = !outraAreaCheckbox.checked;
+                if (!outraAreaCheckbox.checked) {
+                    outraAreaTexto.value = ''; // Limpa o campo se desativado
+                }
+            });
+
             cadastroForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 const formData = new FormData(cadastroForm);
                 formData.append('medidas_json', JSON.stringify(medidasData));
+
+                // NOVO: Adiciona o valor da "Outra Área" ao formData se o checkbox estiver marcado
+                if (outraAreaCheckbox.checked) {
+                    formData.append('outra_area', outraAreaTexto.value);
+                } else {
+                    formData.append('outra_area', ''); // Envia string vazia se não marcado
+                }
 
                 try {
                     const response = await fetch('/salvar_unidade', {
@@ -317,6 +340,10 @@
                 atualizarListaMedidas();
                 document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
                 localidadeUnidadeSelect.value = "";
+                // NOVO: Reseta o estado do campo "Outra Área"
+                outraAreaCheckbox.checked = false;
+                outraAreaTexto.disabled = true;
+                outraAreaTexto.value = '';
             }
 
             carregarUnidadeBtn.addEventListener('click', async () => {
@@ -361,6 +388,12 @@
                         document.querySelector('input[name="gramado"]').checked = data.gramado || false;
                         document.querySelector('input[name="curativo"]').checked = data.curativo || false;
                         document.querySelector('input[name="vacina"]').checked = data.vacina || false;
+                        
+                        // NOVO: Carrega o estado e valor da "Outra Área"
+                        const outraAreaValue = data.outra_area || '';
+                        outraAreaCheckbox.checked = !!outraAreaValue; // Marca se houver valor
+                        outraAreaTexto.value = outraAreaValue;
+                        outraAreaTexto.disabled = !outraAreaCheckbox.checked; // Habilita se marcado
 
                         medidasData = data.medidas || [];
                         selectedMedidaIndex = null;
