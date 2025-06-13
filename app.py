@@ -83,15 +83,18 @@ def generate_excel_and_send_email(localidade, unidade, info):
         "Área Externa": {"sheet": wb.create_sheet("Área Externa"), "total_area": 0.0}
     }
 
+    # Definir os cabeçalhos para as abas de medidas (agora sem Localidade e Unidade)
+    CABECALHO_MEDIDAS = ["Comprimento (m)", "Largura (m)", "Área (m²)"]
     for tipo_aba in abas.keys():
-        abas[tipo_aba]["sheet"].append(["Localidade", "Unidade", "Comprimento (m)", "Largura (m)", "Área (m²)"])
+        abas[tipo_aba]["sheet"].append(CABECALHO_MEDIDAS)
 
     for medida in info.get("medidas", []):
         if isinstance(medida, list) and len(medida) == 4:
             tipo, comp, larg, area = medida
             if tipo in abas:
-                abas[tipo]["sheet"].append([localidade, unidade, comp, larg, round(area, 2)])
-                abas[tipo]["total_area"] += area # Acumula a área total para cada tipo
+                # Adiciona apenas comprimento, largura e área
+                abas[tipo]["sheet"].append([comp, larg, round(area, 2)]) 
+                abas[tipo]["total_area"] += area
         else:
             print(f"Aviso: Formato de medida inesperado: {medida}")
 
@@ -104,9 +107,11 @@ def generate_excel_and_send_email(localidade, unidade, info):
 
     # Remove abas que não foram usadas (contêm apenas cabeçalho)
     for sheet_name, sheet_data in list(abas.items()):
-        if sheet_data["sheet"].max_row == 1: # Only header row, no data
+        # Verifica se a aba tem apenas 1 linha (o cabeçalho) ou se está completamente vazia
+        if sheet_data["sheet"].max_row == 1 or (sheet_data["sheet"].max_row == 0 and sheet_data["sheet"].max_column == 0):
             wb.remove(sheet_data["sheet"])
             
+    # Remove a aba padrão 'Sheet' se estiver vazia ou com apenas o cabeçalho vazio
     if "Sheet" in wb.sheetnames:
         default_sheet = wb["Sheet"]
         if default_sheet.max_row == 0 or (default_sheet.max_row == 1 and all(cell.value is None for cell in default_sheet[1])):
