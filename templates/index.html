@@ -178,10 +178,11 @@
 
            function atualizarListaMedidas() {
                 medidasList.innerHTML = '';
-                medidasData.forEach((medida, index) => {
+                medidasData.reverse().forEach((medida, index) => {
                     const li = document.createElement('li');
                     li.textContent = `${medida.tipo} - Alt: ${medida.altura || 'N/A'}m, Larg: ${medida.largura || 'N/A'}m, Qtd: ${medida.qtd || 1}`;
-                    li.dataset.index = index;
+                    li.dataset.index = medidasData.length - 1 - index; // Mantém o índice correto para seleção
+                    //li.dataset.index = index;
                     if (index === selectedMedidaIndex) {
                         li.classList.add('selected');
                     }
