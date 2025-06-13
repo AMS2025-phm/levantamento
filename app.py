@@ -10,7 +10,7 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
 import re
-import unicodedata # Importar o módulo unicodedata
+import unicodedata
 
 app = Flask(__name__)
 
@@ -29,7 +29,7 @@ TIPOS_PAREDE = ["Alvenaria", "Estuque", "Divisórias"]
 EMAIL_USER = os.environ.get('EMAIL_USER')
 EMAIL_PASS = os.environ.get('EMAIL_PASS')
 EMAIL_SERVER = os.environ.get('EMAIL_SERVER')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587)) # Padrão 587, converte para int
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 
 # Endereço de e-mail fixo para o destinatário
 FIXED_RECIPIENT_EMAIL = "comercialservico2025@gmail.com"
@@ -56,46 +56,56 @@ def generate_excel_and_send_email(localidade, unidade, info):
     ws_detalhe = wb.active
     ws_detalhe.title = "Detalhe" 
 
-    ws_detalhe.append(["Localidade", "Unidade", "Data", "Responsável", "Tipo de Piso", 
-                       "Vidros Altos", "Paredes", "Estacionamento", "Gramado", 
-                       "Sala de Curativo", "Sala de Vacina", "Qtd Funcionários"])
-    
-    ws_detalhe.append([
-        localidade, 
-        unidade, 
-        info.get("data", ""), 
-        info.get("responsavel", ""),
-        ", ".join(info.get("piso", [])), 
-        info.get("vidros_altos", ""),
-        ", ".join(info.get("paredes", [])),
-        "Sim" if info.get("estacionamento") else "Não",
-        "Sim" if info.get("gramado") else "Não",
-        "Sim" if info.get("curativo") else "Não",
-        "Sim" if info.get("vacina") else "Não",
-        info.get("qtd_func", "")
-    ])
+    # --- Seção para as informações principais na vertical ---
+    ws_detalhe.append(["Campo", "Valor"])
+    ws_detalhe.append(["Localidade", localidade])
+    ws_detalhe.append(["Unidade", unidade])
+    ws_detalhe.append(["Data", info.get("data", "")])
+    ws_detalhe.append(["Responsável", info.get("responsavel", "")])
+    ws_detalhe.append(["Tipo de Piso", ", ".join(info.get("piso", []))])
+    ws_detalhe.append(["Vidros Altos", info.get("vidros_altos", "")])
+    ws_detalhe.append(["Paredes", ", ".join(info.get("paredes", []))])
+    ws_detalhe.append(["Estacionamento", "Sim" if info.get("estacionamento") else "Não"])
+    ws_detalhe.append(["Gramado", "Sim" if info.get("gramado") else "Não"])
+    ws_detalhe.append(["Sala de Curativo", "Sim" if info.get("curativo") else "Não"])
+    ws_detalhe.append(["Sala de Vacina", "Sim" if info.get("vacina") else "Não"])
+    ws_detalhe.append(["Qtd Funcionários", info.get("qtd_func", "")])
 
+    # Espaçamento
+    ws_detalhe.append([]) 
+    ws_detalhe.append([])
+
+    # --- Seção para as abas de medidas e cálculo dos totais ---
     abas = {
-        "Vidro": wb.create_sheet("Vidros"),
-        "Área Interna": wb.create_sheet("Área Interna"),
-        "Sanitário-Vestiário": wb.create_sheet("Sanitário-Vestiário"),
-        "Área Externa": wb.create_sheet("Área Externa")
+        "Vidro": {"sheet": wb.create_sheet("Vidros"), "total_area": 0.0},
+        "Área Interna": {"sheet": wb.create_sheet("Área Interna"), "total_area": 0.0},
+        "Sanitário-Vestiário": {"sheet": wb.create_sheet("Sanitário-Vestiário"), "total_area": 0.0},
+        "Área Externa": {"sheet": wb.create_sheet("Área Externa"), "total_area": 0.0}
     }
-    for ws in abas.values():
-        ws.append(["Localidade", "Unidade", "Comprimento (m)", "Largura (m)", "Área (m²)"])
+
+    for tipo_aba in abas.keys():
+        abas[tipo_aba]["sheet"].append(["Localidade", "Unidade", "Comprimento (m)", "Largura (m)", "Área (m²)"])
 
     for medida in info.get("medidas", []):
         if isinstance(medida, list) and len(medida) == 4:
             tipo, comp, larg, area = medida
             if tipo in abas:
-                abas[tipo].append([localidade, unidade, comp, larg, round(area, 2)])
+                abas[tipo]["sheet"].append([localidade, unidade, comp, larg, round(area, 2)])
+                abas[tipo]["total_area"] += area # Acumula a área total para cada tipo
         else:
             print(f"Aviso: Formato de medida inesperado: {medida}")
 
+    # --- Adiciona os totais de m² na aba Detalhe ---
+    ws_detalhe.append(["Resumo de Áreas (m²)"])
+    ws_detalhe.append(["Total Vidros (m²)", round(abas["Vidro"]["total_area"], 2)])
+    ws_detalhe.append(["Total Área Interna (m²)", round(abas["Área Interna"]["total_area"], 2)])
+    ws_detalhe.append(["Total Sanitário-Vestiário (m²)", round(abas["Sanitário-Vestiário"]["total_area"], 2)])
+    ws_detalhe.append(["Total Área Externa (m²)", round(abas["Área Externa"]["total_area"], 2)])
 
-    for sheet_name, sheet_obj in list(abas.items()):
-        if sheet_obj.max_row == 1: # Only header row, no data
-            wb.remove(sheet_obj)
+    # Remove abas que não foram usadas (contêm apenas cabeçalho)
+    for sheet_name, sheet_data in list(abas.items()):
+        if sheet_data["sheet"].max_row == 1: # Only header row, no data
+            wb.remove(sheet_data["sheet"])
             
     if "Sheet" in wb.sheetnames:
         default_sheet = wb["Sheet"]
@@ -103,7 +113,7 @@ def generate_excel_and_send_email(localidade, unidade, info):
             wb.remove(default_sheet)
 
     if "Detalhe" in wb.sheetnames:
-        wb.active = wb["Detalhe"]
+        wb.active = wb["Detalhe"] # Garante que a aba Detalhe seja a primeira a abrir
 
     excel_file_in_memory = io.BytesIO()
     wb.save(excel_file_in_memory)
@@ -117,19 +127,13 @@ def generate_excel_and_send_email(localidade, unidade, info):
     # Constrói o nome base do arquivo
     base_nome = f"{unidade}_{localidade}"
     
-    # --- Nova lógica para remover acentos e caracteres especiais ---
-    # 1. Normaliza a string para decompor caracteres acentuados
+    # --- Lógica para remover acentos e caracteres especiais (mantida do pedido anterior) ---
     normalized_name = unicodedata.normalize('NFKD', base_nome)
-    # 2. Codifica para ASCII e ignora caracteres que não podem ser representados
-    #    Isso remove os acentos (e outros caracteres não ASCII)
     ascii_name = normalized_name.encode('ascii', 'ignore').decode('utf-8')
-    # 3. Substitui qualquer caractere que não seja letra, número ou underscore por um underscore
     nome_arquivo_limpo = re.sub(r'[^a-zA-Z0-9_]', '_', ascii_name)
-    # 4. Substitui múltiplos underscores por um único underscore
     nome_arquivo_limpo = re.sub(r'_+', '_', nome_arquivo_limpo)
-    # 5. Remove underscores extras no início/fim
     nome_arquivo = f"{nome_arquivo_limpo.strip('_')}.xlsx"
-    # --- Fim da nova lógica ---
+    # --- Fim da lógica ---
 
     if not EMAIL_USER or not EMAIL_PASS or not EMAIL_SERVER:
         raise Exception("Configurações de e-mail incompletas no servidor. Verifique EMAIL_USER, EMAIL_PASS, EMAIL_SERVER no Render.")
@@ -249,7 +253,7 @@ def salvar_unidade():
     if localidade not in localidades:
         localidades[localidade] = {}
     
-    localidades[localidade][unidade] = unit_data # Store the prepared data
+    localidades[localidade][unidade] = unit_data
     salvar_dados(localidades)
 
     try:
