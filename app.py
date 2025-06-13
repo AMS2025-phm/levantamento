@@ -9,7 +9,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
-import re # Importar o módulo re
+import re
+import unicodedata # Importar o módulo unicodedata
 
 app = Flask(__name__)
 
@@ -115,18 +116,20 @@ def generate_excel_and_send_email(localidade, unidade, info):
 
     # Constrói o nome base do arquivo
     base_nome = f"{unidade}_{localidade}"
-    # Remove caracteres inválidos para nomes de arquivo e substitui por underscore
-    # Permite apenas letras (incluindo acentuadas), números, espaços e hifens, depois substitui espaços e hifens por underscore.
-    # A regex [^a-zA-Z0-9_.-] substitui qualquer coisa que NÃO seja uma letra, número, underscore, ponto ou hífen por underscore.
-    # Em seguida, substitui múltiplos underscores por um único underscore e remove underscores extras no início/fim.
     
-    # Primeiro, substitua caracteres especiais por '_'
-    nome_arquivo_limpo = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚçÇ\s-]', '_', base_nome)
-    # Segundo, substitua múltiplos underscores, espaços e hífens por um único underscore
-    nome_arquivo_limpo = re.sub(r'[\s-]+', '_', nome_arquivo_limpo)
+    # --- Nova lógica para remover acentos e caracteres especiais ---
+    # 1. Normaliza a string para decompor caracteres acentuados
+    normalized_name = unicodedata.normalize('NFKD', base_nome)
+    # 2. Codifica para ASCII e ignora caracteres que não podem ser representados
+    #    Isso remove os acentos (e outros caracteres não ASCII)
+    ascii_name = normalized_name.encode('ascii', 'ignore').decode('utf-8')
+    # 3. Substitui qualquer caractere que não seja letra, número ou underscore por um underscore
+    nome_arquivo_limpo = re.sub(r'[^a-zA-Z0-9_]', '_', ascii_name)
+    # 4. Substitui múltiplos underscores por um único underscore
     nome_arquivo_limpo = re.sub(r'_+', '_', nome_arquivo_limpo)
-    # Finalmente, remova underscores do início e do fim, e adicione a extensão .xlsx
+    # 5. Remove underscores extras no início/fim
     nome_arquivo = f"{nome_arquivo_limpo.strip('_')}.xlsx"
+    # --- Fim da nova lógica ---
 
     if not EMAIL_USER or not EMAIL_PASS or not EMAIL_SERVER:
         raise Exception("Configurações de e-mail incompletas no servidor. Verifique EMAIL_USER, EMAIL_PASS, EMAIL_SERVER no Render.")
