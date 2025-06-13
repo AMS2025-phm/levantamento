@@ -4,6 +4,7 @@ import os
 import datetime
 import openpyxl
 import io
+import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -276,7 +277,14 @@ def exportar_excel_e_enviar_email():
         return jsonify({"status": "error", "message": "Configurações de e-mail incompletas no servidor."}), 500
 
     # Monta e envia o e-mail
-    nome_arquivo = f"Levantamento_{local}_{unidade}.xlsx"
+	# ... dentro da função exportar_excel_e_enviar_email()
+	def sanitizar_nome(nome):
+    	return re.sub(r'[^a-zA-Z0-9_-]', '_', nome)
+
+	local_sanitizado = sanitizar_nome(local)
+	unidade_sanitizado = sanitizar_nome(unidade)
+	nome_arquivo = f"Levantamento_{local_sanitizado}_{unidade_sanitizado}.xlsx"
+    # nome_arquivo = f"Levantamento_{local}_{unidade}.xlsx"
     
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
