@@ -108,19 +108,18 @@
             <div class="button-group">
                 <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
                 <button type="button" id="addMultipleMedidasBtn" class="btn btn-secondary">Inserir Múltiplas Vezes</button>
-		<button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
+                <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
                 <button type="button" id="repeatMedidaBtn" class="btn btn-secondary">Repetir Medida</button>
             </div>
 
             <h3>Medidas Adicionadas:</h3>
             <ul id="medidaList" class="medida-list">
-                <!-- Medidas serão adicionadas aqui via JavaScript -->
-            </ul>
+                </ul>
 
             <input type="hidden" id="medidas_json" name="medidas_json">
 
             <div class="button-group main-actions">
-                <button type="submit" class="btn btn-primary">Salvar Unidade</button>
+                <button type="submit" class="btn btn-primary">Salvar Unidade e Enviar Excel</button>
                 <button type="button" id="clearFormBtn" class="btn btn-secondary">Nova Unidade</button>
             </div>
         </form>
@@ -132,21 +131,11 @@
             <label for="localidadeUnidadeSelect">Selecionar Unidade:</label>
             <select id="localidadeUnidadeSelect" class="form-control">
                 <option value="">-- Selecione uma unidade --</option>
-                <!-- Opções serão preenchidas via JavaScript -->
-            </select>
+                </select>
         </div>
         <div class="button-group">
             <button type="button" id="carregarUnidadeBtn" class="btn btn-primary">Carregar Unidade</button>
         </div>
-
-        <hr>
-
-        <h2>Exportar Excel e Enviar por E-mail</h2>
-        <form id="exportAndEmailForm" action="/exportar_excel_e_enviar_email" method="POST">
-            <p>O arquivo Excel será enviado para: <strong>comercialservico2025@gmail.com</strong></p>
-            <input type="hidden" id="selectedUnitToExportEmail" name="selected_unit_to_export">
-            <button type="submit" class="btn btn-success">Exportar Excel e Enviar E-mail</button>
-        </form>
     </div>
 
     <script>
@@ -160,8 +149,6 @@
             const clearFormBtn = document.getElementById('clearFormBtn');
             const localidadeUnidadeSelect = document.getElementById('localidadeUnidadeSelect');
             const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
-            const exportAndEmailForm = document.getElementById('exportAndEmailForm');
-            const selectedUnitToExportEmailInput = document.getElementById('selectedUnitToExportEmail');
 
             let medidasData = [];
             let selectedMedidaIndex = null;
@@ -177,31 +164,29 @@
                 }, 5000);
             }
 
-	function atualizarListaMedidas() {
-    		medidaList.innerHTML = '';
-    		if (medidasData.length === 0) {
-        		const li = document.createElement('li');
-        		li.textContent = 'Nenhuma medida adicionada.';
-        		medidaList.appendChild(li);
-    		} else {
-        		[...medidasData].reverse().forEach((medida, reversedIndex) => {
-            			const index = medidasData.length - 1 - reversedIndex;
-            			const li = document.createElement('li');
-            			li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
-            			if (index === selectedMedidaIndex) {
-                			li.classList.add('selected');
-            			}
-            			li.addEventListener('click', () => {
-                			selectedMedidaIndex = index;
-                			atualizarListaMedidas();
-            			});
-            			medidaList.appendChild(li);
-        		});
-    		}
-    		medidasJsonInput.value = JSON.stringify(medidasData);
-	}
-
-            
+            function atualizarListaMedidas() {
+                medidaList.innerHTML = '';
+                if (medidasData.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Nenhuma medida adicionada.';
+                    medidaList.appendChild(li);
+                } else {
+                    [...medidasData].reverse().forEach((medida, reversedIndex) => {
+                        const index = medidasData.length - 1 - reversedIndex;
+                        const li = document.createElement('li');
+                        li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
+                        if (index === selectedMedidaIndex) {
+                            li.classList.add('selected');
+                        }
+                        li.addEventListener('click', () => {
+                            selectedMedidaIndex = index;
+                            atualizarListaMedidas();
+                        });
+                        medidaList.appendChild(li);
+                    });
+                }
+                medidasJsonInput.value = JSON.stringify(medidasData);
+            }
 
             addMedidaBtn.addEventListener('click', () => {
                 const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
@@ -227,57 +212,52 @@
 
                 comprimentoInput.value = '';
                 larguraInput.value = '';
-                // tipoMedidaCheckboxes.forEach(cb => cb.checked = false); // Desmarcar
-                selectedMedidaIndex = null; // Limpa a seleção
+                selectedMedidaIndex = null;
                 atualizarListaMedidas();
             });
 
-	const addMultipleMedidasBtn = document.getElementById('addMultipleMedidasBtn');
-		addMultipleMedidasBtn.addEventListener('click', () => {
-    			const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
-    			const tiposSelecionados = Array.from(tipoMedidaCheckboxes).map(cb => cb.value);
-    			const comprimentoInput = document.getElementById('comprimento');
-    			const larguraInput = document.getElementById('largura');
-    			const comprimento = parseFloat(comprimentoInput.value.replace(',', '.'));
-    			const largura = parseFloat(larguraInput.value.replace(',', '.'));
+            const addMultipleMedidasBtn = document.getElementById('addMultipleMedidasBtn');
+            addMultipleMedidasBtn.addEventListener('click', () => {
+                const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
+                const tiposSelecionados = Array.from(tipoMedidaCheckboxes).map(cb => cb.value);
+                const comprimentoInput = document.getElementById('comprimento');
+                const larguraInput = document.getElementById('largura');
+                const comprimento = parseFloat(comprimentoInput.value.replace(',', '.'));
+                const largura = parseFloat(larguraInput.value.replace(',', '.'));
 
-    			if (tiposSelecionados.length === 0) {
-        			showMessage('Selecione ao menos um tipo de medida.', 'warning');
-        			return;
-    			}
-    			if (isNaN(comprimento) || isNaN(largura) || comprimento <= 0 || largura <= 0) {
-        			showMessage('Comprimento e largura devem ser números positivos.', 'error');
-        			return;
-    			}
+                if (tiposSelecionados.length === 0) {
+                    showMessage('Selecione ao menos um tipo de medida.', 'warning');
+                    return;
+                }
+                if (isNaN(comprimento) || isNaN(largura) || comprimento <= 0 || largura <= 0) {
+                    showMessage('Comprimento e largura devem ser números positivos.', 'error');
+                    return;
+                }
 
-    			const repeticoes = prompt("Quantas vezes deseja inserir essa medida?", "1");
-    			const num = parseInt(repeticoes, 10);
-    			if (isNaN(num) || num <= 0) {
-        			showMessage('Digite um número válido maior que zero.', 'warning');
-        			return;
-    			}
+                const repeticoes = prompt("Quantas vezes deseja inserir essa medida?", "1");
+                const num = parseInt(repeticoes, 10);
+                if (isNaN(num) || num <= 0) {
+                    showMessage('Digite um número válido maior que zero.', 'warning');
+                    return;
+                }
 
-    			const area = comprimento * largura;
-    			for (let i = 0; i < num; i++) {
-        			tiposSelecionados.forEach(tipo => {
-            				medidasData.push([tipo, comprimento, largura, area]);
-        			});
-    			}
+                const area = comprimento * largura;
+                for (let i = 0; i < num; i++) {
+                    tiposSelecionados.forEach(tipo => {
+                        medidasData.push([tipo, comprimento, largura, area]);
+                    });
+                }
 
-    			comprimentoInput.value = '';
-    			larguraInput.value = '';
-    			// tipoMedidaCheckboxes.forEach(cb => cb.checked = false);
-    			selectedMedidaIndex = null;
-    			atualizarListaMedidas();
-	});
-
-
-
+                comprimentoInput.value = '';
+                larguraInput.value = '';
+                selectedMedidaIndex = null;
+                atualizarListaMedidas();
+            });
 
             removeMedidaBtn.addEventListener('click', () => {
                 if (selectedMedidaIndex !== null) {
                     medidasData.splice(selectedMedidaIndex, 1);
-                    selectedMedidaIndex = null; // Limpa a seleção
+                    selectedMedidaIndex = null;
                     atualizarListaMedidas();
                 } else {
                     showMessage('Selecione uma medida para excluir.', 'warning');
@@ -315,9 +295,7 @@
                     const result = await response.json();
                     if (result.status === 'success') {
                         showMessage(result.message, 'success');
-                        // Atualiza a lista de unidades salvas
                         await carregarListaUnidadesSalvas();
-                        // Limpa o formulário após salvar
                         clearForm();
                     } else {
                         showMessage(result.message, 'error');
@@ -337,9 +315,8 @@
                 medidasData = [];
                 selectedMedidaIndex = null;
                 atualizarListaMedidas();
-                // Desmarcar todos os checkboxes de piso, parede e tipo_medida
                 document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-                localidadeUnidadeSelect.value = ""; // Limpa a seleção do dropdown
+                localidadeUnidadeSelect.value = "";
             }
 
             carregarUnidadeBtn.addEventListener('click', async () => {
@@ -366,24 +343,20 @@
                         document.getElementById('responsavel').value = data.responsavel || '';
                         document.getElementById('qtd_func').value = data.qtd_func || '';
 
-                        // Resetar e marcar checkboxes de piso
                         document.querySelectorAll('input[name^="piso_"]').forEach(cb => cb.checked = false);
                         (data.piso || []).forEach(p => {
                             const cb = document.querySelector(`input[name="piso_${p}"]`);
                             if (cb) cb.checked = true;
                         });
 
-                        // Marcar radio button de vidros_altos
                         document.querySelector(`input[name="vidros_altos"][value="${data.vidros_altos || 'Não'}"]`).checked = true;
 
-                        // Resetar e marcar checkboxes de paredes
                         document.querySelectorAll('input[name^="parede_"]').forEach(cb => cb.checked = false);
                         (data.paredes || []).forEach(p => {
                             const cb = document.querySelector(`input[name="parede_${p}"]`);
                             if (cb) cb.checked = true;
                         });
 
-                        // Marcar checkboxes de outras informações
                         document.querySelector('input[name="estacionamento"]').checked = data.estacionamento || false;
                         document.querySelector('input[name="gramado"]').checked = data.gramado || false;
                         document.querySelector('input[name="curativo"]').checked = data.curativo || false;
@@ -402,33 +375,17 @@
                 }
             });
 
-            // Lidar com a exportação e envio por e-mail
-            exportAndEmailForm.addEventListener('submit', (event) => {
-                const selectedValue = localidadeUnidadeSelect.value;
-
-                if (!selectedValue) {
-                    event.preventDefault(); // Impede o envio do formulário
-                    showMessage("Selecione uma unidade para exportar o Excel e enviar por e-mail.", 'warning');
-                    return;
-                }
-                // Preenche os campos ocultos do formulário antes de submeter
-                selectedUnitToExportEmailInput.value = selectedValue;
-            });
-
-            // Função para carregar a lista de unidades salvas dinamicamente
             async function carregarListaUnidadesSalvas() {
                 try {
-                    // Usando caminho relativo, pois o Flask deve servir o index.html e as rotas da API
                     const response = await fetch('/get_localidades_unidades', { method: 'GET' });
 
                     if (!response.ok) {
-                        const errorText = await response.text(); // Lê como texto para ver o que está lá
+                        const errorText = await response.text();
                         console.error('Erro na resposta do servidor ao carregar unidades:', response.status, response.statusText, errorText);
                         showMessage('Erro ao carregar lista de unidades salvas. Verifique os logs do servidor.', 'error');
                         return;
                     }
 
-                    // Verifica se a resposta é realmente JSON antes de analisar
                     const contentType = response.headers.get("content-type");
                     if (contentType && contentType.includes("application/json")) {
                         const listaUnidades = await response.json();
@@ -452,9 +409,8 @@
                 }
             }
 
-            // Inicializar a lista de medidas e unidades salvas ao carregar a página
             atualizarListaMedidas();
-            carregarListaUnidadesSalvas(); // Chama para popular o dropdown ao carregar a página
+            carregarListaUnidadesSalvas();
         });
     </script>
 </body>
