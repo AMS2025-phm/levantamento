@@ -57,7 +57,7 @@
 
             <div class="form-group" id="perigoContainer" style="display:none;">
                 <label>
-                    <input type="checkbox" name="vidros_perigo" id="vidros_perigo">
+                    <input type="checkbox" id="vidros_perigo">
                     Necessita equipamento adicional/ representa perigo
                 </label>
             </div>
@@ -169,7 +169,6 @@
             let medidasData = [];
             let selectedMedidaIndex = null;
 
-            // Função para exibir mensagens
             function showMessage(message, type = 'info') {
                 const messageBox = document.createElement('div');
                 messageBox.className = `message-box ${type}`;
@@ -204,7 +203,6 @@
                 medidasJsonInput.value = JSON.stringify(medidasData);
             }
 
-            // CORREÇÃO: Listener de evento para os botões de rádio de vidros altos movido para cá
             radiosVidrosAltos.forEach(radio => {
                 radio.addEventListener('change', () => {
                     if (radio.value === "Sim" && radio.checked) {
@@ -322,7 +320,6 @@
                 const formData = new FormData(cadastroForm);
                 formData.append('medidas_json', JSON.stringify(medidasData));
                 
-                // CORREÇÃO: Adiciona o valor de 'vidros_perigo' ao formData
                 formData.append('vidros_perigo', checkboxPerigo.checked ? 'Sim' : 'Não');
 
                 if (outraAreaCheckbox.checked) {
@@ -357,7 +354,6 @@
                 document.getElementById('data').value = new Date().toISOString().slice(0, 10);
                 document.querySelector('input[name="vidros_altos"][value="Não"]').checked = true;
                 
-                // CORREÇÃO: Reseta o estado do container de perigo e do checkbox
                 perigoContainer.style.display = 'none';
                 checkboxPerigo.checked = false;
 
@@ -390,7 +386,7 @@
                     const result = await response.json();
                     if (result.status === 'success') {
                         const data = result.data;
-                        clearForm(); // Limpa o formulário antes de carregar novos dados
+                        clearForm(); 
 
                         document.getElementById('localidade').value = selectedValue.split(' - ')[0];
                         document.getElementById('unidade').value = selectedValue.split(' - ')[1];
@@ -403,7 +399,6 @@
                             if (cb) cb.checked = true;
                         });
 
-                        // CORREÇÃO: Lógica para carregar o estado de vidros altos e perigo
                         const vidrosAltosValue = data.vidros_altos || 'Não';
                         document.querySelector(`input[name="vidros_altos"][value="${vidrosAltosValue}"]`).checked = true;
                         if (vidrosAltosValue === 'Sim') {
