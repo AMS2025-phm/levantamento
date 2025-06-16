@@ -46,10 +46,11 @@ def salvar_dados(dados):
     with open(ARQUIVO_DADOS, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=4)
 
-def generate_excel_and_send_email(localidade, unidade, info):
+# MODIFICADO: Função agora aceita um e-mail de cópia
+def generate_excel_and_send_email(localidade, unidade, info, email_copia):
     """
     Gera uma planilha Excel com os dados de uma unidade e a envia por e-mail.
-    Recebe localidade, unidade e o dicionário de informações da unidade.
+    Recebe localidade, unidade, o dicionário de informações da unidade e um e-mail para cópia.
     """
     wb = openpyxl.Workbook()
     
@@ -62,10 +63,11 @@ def generate_excel_and_send_email(localidade, unidade, info):
     ws_detalhe.append(["Unidade", unidade])
     ws_detalhe.append(["Data", info.get("data", "")])
     ws_detalhe.append(["Responsável", info.get("responsavel", "")])
+    # NOVO: Adiciona o e-mail do inspetor na planilha
+    ws_detalhe.append(["E-mail do Inspetor", info.get("email_copia", "")])
     ws_detalhe.append(["Tipo de Piso", ", ".join(info.get("piso", []))])
     ws_detalhe.append(["Vidros Altos", info.get("vidros_altos", "")])
     
-    # ALTERAÇÃO: Lógica para exibir a mensagem completa no Excel se o checkbox for marcado
     vidros_perigo_status = info.get("vidros_perigo", "Não")
     texto_vidros_risco = "Necessita equipamento adicional/ representa perigo" if vidros_perigo_status == "Sim" else "Não"
     ws_detalhe.append(["Vidros com Risco", texto_vidros_risco])
@@ -81,12 +83,9 @@ def generate_excel_and_send_email(localidade, unidade, info):
     if outra_area_valor:
         ws_detalhe.append(["Outra Área", outra_area_valor])
 
-
-    # Espaçamento
     ws_detalhe.append([]) 
     ws_detalhe.append([])
 
-    # --- Seção para as abas de medidas e cálculo dos totais ---
     abas = {
         "Vidro": {"sheet": wb.create_sheet("Vidros"), "total_area": 0.0},
         "Área Interna": {"sheet": wb.create_sheet("Área Interna"), "total_area": 0.0},
@@ -107,7 +106,6 @@ def generate_excel_and_send_email(localidade, unidade, info):
         else:
             print(f"Aviso: Formato de medida inesperado: {medida}")
 
-    # --- Adiciona os totais de m² na aba Detalhe ---
     ws_detalhe.append(["Resumo de Áreas (m²)"])
     ws_detalhe.append(["Total Vidros (m²)", round(abas["Vidro"]["total_area"], 2)])
     ws_detalhe.append(["Total Área Interna (m²)", round(abas["Área Interna"]["total_area"], 2)])
@@ -144,11 +142,16 @@ def generate_excel_and_send_email(localidade, unidade, info):
     nome_arquivo = f"{nome_arquivo_limpo.strip('_')}.xlsx"
 
     if not EMAIL_USER or not EMAIL_PASS or not EMAIL_SERVER:
-        raise Exception("Configurações de e-mail incompletas no servidor. Verifique EMAIL_USER, EMAIL_PASS, EMAIL_SERVER no Render.")
+        raise Exception("Configurações de e-mail incompletas no servidor.")
+
+    # MODIFICADO: Cria a lista de destinatários
+    recipients = [FIXED_RECIPIENT_EMAIL]
+    if email_copia and "@" in email_copia: # Adiciona o e-mail de cópia se for válido
+        recipients.append(email_copia)
 
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
-    msg['To'] = FIXED_RECIPIENT_EMAIL
+    msg['To'] = ", ".join(recipients) # Transforma a lista em uma string separada por vírgulas
     msg['Subject'] = f"Levantamento das Medidas da Unidade: {localidade} - {unidade}"
 
     body = f"""
@@ -182,11 +185,11 @@ def generate_excel_and_send_email(localidade, unidade, info):
             server.send_message(msg)
         return True
     except smtplib.SMTPAuthenticationError as e:
-        raise Exception(f"Erro de autenticação ao enviar e-mail: {e}. Verifique EMAIL_USER e EMAIL_PASS (senha de aplicativo).")
+        raise Exception(f"Erro de autenticação ao enviar e-mail: {e}.")
     except smtplib.SMTPConnectError as e:
-        raise Exception(f"Erro de conexão ao servidor de e-mail: {e}. Verifique EMAIL_SERVER e EMAIL_PORT.")
+        raise Exception(f"Erro de conexão ao servidor de e-mail: {e}.")
     except Exception as e:
-        raise Exception(f"Erro inesperado ao enviar e-mail: {e}. Verifique as configurações de e-mail e permissões.")
+        raise Exception(f"Erro inesperado ao enviar e-mail: {e}.")
 
 @app.route('/')
 def index():
@@ -221,6 +224,8 @@ def salvar_unidade():
 
     data = request.form.get('data', '')
     responsavel = request.form.get('responsavel', '')
+    # NOVO: Captura o e-mail de cópia do formulário
+    email_copia = request.form.get('email_copia', '').strip()
     qtd_func = request.form.get('qtd_func', '')
 
     piso_selecionado = []
@@ -250,6 +255,7 @@ def salvar_unidade():
     unit_data = {
         "data": data,
         "responsavel": responsavel,
+        "email_copia": email_copia, # NOVO: Salva o e-mail nos dados da unidade
         "qtd_func": qtd_func,
         "piso": piso_selecionado,
         "vidros_altos": vidros_altos,
@@ -271,7 +277,8 @@ def salvar_unidade():
     salvar_dados(localidades)
 
     try:
-        generate_excel_and_send_email(localidade, unidade, unit_data)
+        # MODIFICADO: Passa o e-mail de cópia para a função de envio
+        generate_excel_and_send_email(localidade, unidade, unit_data, email_copia)
         return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"})
     except Exception as e:
         print(f"Erro ao gerar Excel/enviar e-mail: {e}")
