@@ -27,6 +27,12 @@
                 <label for="responsavel">Responsavel pela unidade:</label>
                 <input type="text" id="responsavel" name="responsavel">
             </div>
+            
+            <div class="form-group">
+                <label for="email_copia">Seu E-mail para Cópia:</label>
+                <input type="email" id="email_copia" name="email_copia" placeholder="seuemail@exemplo.com">
+            </div>
+
             <div class="form-group">
                 <label for="qtd_func">Quantidade de Funcionário:</label>
                 <input type="number" id="qtd_func" name="qtd_func" min="0">
@@ -392,6 +398,8 @@
                         document.getElementById('unidade').value = selectedValue.split(' - ')[1];
                         document.getElementById('data').value = data.data || '';
                         document.getElementById('responsavel').value = data.responsavel || '';
+                        // NOVO: Carrega o e-mail de cópia
+                        document.getElementById('email_copia').value = data.email_copia || '';
                         document.getElementById('qtd_func').value = data.qtd_func || '';
 
                         (data.piso || []).forEach(p => {
