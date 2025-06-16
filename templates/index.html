@@ -3,221 +3,591 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Levantamento das Medidas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Levantamento das Medidas (Offline)</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* rounded-3xl */
+            padding: 2.5rem; /* p-10 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
+            max-width: 800px;
+            width: 100%;
+        }
+        .form-group {
+            margin-bottom: 1.25rem; /* mb-5 */
+        }
+        .label {
+            display: block;
+            font-weight: 600; /* font-semibold */
+            margin-bottom: 0.5rem; /* mb-2 */
+            color: #333;
+        }
+        .input, .select {
+            width: 100%;
+            padding: 0.75rem; /* p-3 */
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-size: 1rem; /* text-base */
+        }
+        .input:focus, .select:focus {
+            outline: none;
+            border-color: #2563eb; /* focus:border-blue-600 */
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2); /* focus:ring-blue-200 */
+        }
+        .checkbox-group, .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem; /* gap-4 */
+        }
+        .checkbox-item, .radio-item {
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-item input[type="checkbox"], .radio-item input[type="radio"] {
+            margin-right: 0.5rem; /* mr-2 */
+            width: 1.25rem; /* w-5 */
+            height: 1.25rem; /* h-5 */
+        }
+        .btn {
+            padding: 0.75rem 1.5rem; /* px-6 py-3 */
+            border-radius: 0.75rem; /* rounded-xl */
+            font-weight: 600; /* font-semibold */
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+        }
+        .btn-primary {
+            background-color: #22c55e; /* bg-green-500 */
+        }
+        .btn-primary:hover {
+            background-color: #16a34a; /* hover:bg-green-600 */
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background-color: #6b7280; /* bg-gray-500 */
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563; /* hover:bg-gray-600 */
+            transform: translateY(-1px);
+        }
+        .btn-danger {
+            background-color: #ef4444; /* bg-red-500 */
+        }
+        .btn-danger:hover {
+            background-color: #dc2626; /* hover:bg-red-600 */
+            transform: translateY(-1px);
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem; /* gap-3 */
+            margin-top: 1rem; /* mt-4 */
+            justify-content: center;
+        }
+        .medida-list {
+            background-color: #f9fafb; /* bg-gray-50 */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1rem; /* p-4 */
+            margin-top: 1rem; /* mt-4 */
+        }
+        .medida-list-item {
+            background-color: #f3f4f6; /* bg-gray-100 */
+            padding: 0.75rem; /* p-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            margin-bottom: 0.5rem; /* mb-2 */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .medida-list-item.selected {
+            background-color: #bfdbfe; /* bg-blue-200 */
+            border: 1px solid #2563eb; /* border-blue-600 */
+        }
+        .medida-list-item:hover {
+            background-color: #e5e7eb; /* hover:bg-gray-200 */
+        }
+        .no-medida-text {
+            color: #6b7280; /* text-gray-500 */
+            text-align: center;
+            font-style: italic;
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+        .message-box.success { background-color: #4CAF50; }
+        .message-box.error { background-color: #F44336; }
+        .message-box.warning { background-color: #FFC107; color: #333; }
+        .message-box-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            margin-left: 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .message-box.warning .message-box-close {
+            color: #333;
+        }
+        .online-status {
+            text-align: center;
+            font-weight: 500;
+            margin-bottom: 15px;
+            padding: 5px;
+            border-radius: 8px;
+        }
+        .online-status.online {
+            background-color: #d1fae5; /* green-100 */
+            color: #065f46; /* green-800 */
+        }
+        .online-status.offline {
+            background-color: #fee2e2; /* red-100 */
+            color: #991b1b; /* red-800 */
+        }
+        .flex-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flex-1 {
+            flex: 1;
+        }
+        .disabled-input {
+            background-color: #e9e9e9;
+            color: #a0a0a0;
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>Levantamento de dados das Unidade</h1>
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Levantamento de Dados das Unidades</h1>
+
+        <div id="onlineStatus" class="online-status"></div>
 
         <form id="cadastroForm">
             <div class="form-group">
-                <label for="localidade">Localidade:</label>
-                <input type="text" id="localidade" name="localidade" required>
+                <label for="localidade" class="label">Localidade:</label>
+                <input type="text" id="localidade" name="localidade" class="input" required>
             </div>
             <div class="form-group">
-                <label for="unidade">Unidade:</label>
-                <input type="text" id="unidade" name="unidade" required>
+                <label for="unidade" class="label">Unidade:</label>
+                <input type="text" id="unidade" name="unidade" class="input" required>
             </div>
             <div class="form-group">
-                <label for="data">Data:</label>
-                <input type="date" id="data" name="data" value="{{ data_hoje }}" required>
+                <label for="data" class="label">Data:</label>
+                <input type="date" id="data" name="data" class="input" required>
             </div>
             <div class="form-group">
-                <label for="responsavel">Responsavel pela unidade:</label>
-                <input type="text" id="responsavel" name="responsavel">
+                <label for="responsavel" class="label">Responsável pela unidade:</label>
+                <input type="text" id="responsavel" name="responsavel" class="input">
             </div>
             
             <div class="form-group">
-                <label for="email_copia">Seu E-mail para Cópia:</label>
-                <input type="email" id="email_copia" name="email_copia" placeholder="seuemail@exemplo.com">
+                <label for="email_copia" class="label">Seu E-mail para Cópia:</label>
+                <input type="email" id="email_copia" name="email_copia" class="input" placeholder="seuemail@exemplo.com">
             </div>
 
             <div class="form-group">
-                <label for="qtd_func">Quantidade de Funcionário:</label>
-                <input type="number" id="qtd_func" name="qtd_func" min="0">
+                <label for="qtd_func" class="label">Quantidade de Funcionário:</label>
+                <input type="number" id="qtd_func" name="qtd_func" min="0" class="input">
             </div>
 
             <div class="form-group">
-                <label>Tipo de Piso:</label>
-                <div class="checkbox-group">
-                    {% for piso in tipos_piso %}
-                        <label>
-                            <input type="checkbox" name="piso_{{ piso }}" value="{{ piso }}"> {{ piso }}
-                        </label>
-                    {% endfor %}
+                <label class="label">Tipo de Piso:</label>
+                <div class="checkbox-group" id="pisoCheckboxGroup">
+                    <!-- Options will be dynamically loaded by JS -->
                 </div>
             </div>
 
             <div class="form-group">
-                <label>Vidros Altos:</label>
+                <label class="label">Vidros Altos:</label>
                 <div class="radio-group">
-                    <label>
+                    <label class="radio-item">
                         <input type="radio" name="vidros_altos" value="Sim"> Sim
                     </label>
-                    <label>
+                    <label class="radio-item">
                         <input type="radio" name="vidros_altos" value="Não" checked> Não
                     </label>
                 </div>
             </div>
 
-            <div class="form-group" id="perigoContainer" style="display:none;">
-                <label>
+            <div class="form-group hidden" id="perigoContainer">
+                <label class="checkbox-item">
                     <input type="checkbox" id="vidros_perigo">
                     Necessita equipamento adicional/ representa perigo
                 </label>
             </div>
 
             <div class="form-group">
-                <label>Paredes:</label>
-                <div class="checkbox-group">
-                    {% for parede in tipos_parede %}
-                        <label>
-                            <input type="checkbox" name="parede_{{ parede }}" value="{{ parede }}"> {{ parede }}
-                        </label>
-                    {% endfor %}
+                <label class="label">Paredes:</label>
+                <div class="checkbox-group" id="paredeCheckboxGroup">
+                    <!-- Options will be dynamically loaded by JS -->
                 </div>
             </div>
 
             <div class="form-group">
-                <label>Outras Informações:</label>
+                <label class="label">Outras Informações:</label>
                 <div class="checkbox-group">
-                    <label>
-                        <input type="checkbox" name="estacionamento"> Estacionamento
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="estacionamento" id="estacionamento"> Estacionamento
                     </label>
-                    <label>
-                        <input type="checkbox" name="gramado"> Gramado
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="gramado" id="gramado"> Gramado
                     </label>
-                    <label>
-                        <input type="checkbox" name="curativo"> Sala de Curativo
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="curativo" id="curativo"> Sala de Curativo
                     </label>
-                    <label>
-                        <input type="checkbox" name="vacina"> Sala de Vacina
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="vacina" id="vacina"> Sala de Vacina
                     </label>
-                    <label>
+                    <label class="checkbox-item flex-row">
                         <input type="checkbox" id="outra_area_checkbox" name="outra_area_checkbox"> Outra Área:
-                        <input type="text" id="outra_area_texto" name="outra_area_texto" placeholder="Descreva a área" disabled>
+                        <input type="text" id="outra_area_texto" name="outra_area_texto" placeholder="Descreva a área" class="input flex-1 disabled-input" disabled>
                     </label>
-                    </div>
+                </div>
             </div>
 
-            <hr>
+            <hr class="my-6 border-t border-gray-300">
 
-            <h2>Medidas</h2>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Medidas</h2>
             <div class="form-group">
-                <label for="tipo_medida">Tipo de Medida:</label>
-                <div class="checkbox-group">
-                    {% for tipo in tipos_medida %}
-                        <label>
-                            <input type="checkbox" name="tipo_medida" value="{{ tipo }}"> {{ tipo }}
-                        </label>
-                    {% endfor %}
+                <label for="tipo_medida" class="label">Tipo de Medida:</label>
+                <div class="checkbox-group" id="tipoMedidaCheckboxes">
+                    <!-- Options will be dynamically loaded by JS -->
                 </div>
             </div>
             <div class="form-group">
-                <label for="comprimento">Comprimento (m):</label>
-                <input type="number" id="comprimento" step="0.01" min="0">
+                <label for="comprimento" class="label">Comprimento (m):</label>
+                <input type="number" id="comprimento" step="0.01" min="0" class="input">
             </div>
             <div class="form-group">
-                <label for="largura">Largura (m):</label>
-                <input type="number" id="largura" step="0.01" min="0">
+                <label for="largura" class="label">Largura (m):</label>
+                <input type="number" id="largura" step="0.01" min="0" class="input">
             </div>
             <div class="button-group">
-                <button type="button" id="addMedidaBtn" class="btn">Adicionar Medida</button>
+                <button type="button" id="addMedidaBtn" class="btn btn-primary">Adicionar Medida</button>
                 <button type="button" id="addMultipleMedidasBtn" class="btn btn-secondary">Inserir Múltiplas Vezes</button>
                 <button type="button" id="removeMedidaBtn" class="btn btn-danger">Excluir Medida</button>
                 <button type="button" id="repeatMedidaBtn" class="btn btn-secondary">Repetir Medida</button>
             </div>
 
-            <h3>Medidas Adicionadas:</h3>
+            <h3 class="text-xl font-semibold text-gray-700 my-4">Medidas Adicionadas:</h3>
             <ul id="medidaList" class="medida-list">
-                </ul>
-
-            <input type="hidden" id="medidas_json" name="medidas_json">
+                <li class="no-medida-text">Nenhuma medida adicionada.</li>
+            </ul>
 
             <div class="button-group main-actions">
-                <button type="submit" class="btn btn-primary">Salvar Unidade e Enviar Excel</button>
-                <button type="button" id="clearFormBtn" class="btn btn-secondary">Nova Unidade</button>
+                <button type="submit" class="btn btn-primary w-full max-w-sm">Salvar Unidade e Enviar Excel</button>
+                <button type="button" id="clearFormBtn" class="btn btn-secondary w-full max-w-sm">Nova Unidade</button>
             </div>
         </form>
 
-        <hr>
+        <hr class="my-6 border-t border-gray-300">
 
-        <h2>Unidades Salvas</h2>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Unidades Salvas Localmente</h2>
         <div class="form-group">
-            <label for="localidadeUnidadeSelect">Selecionar Unidade:</label>
-            <select id="localidadeUnidadeSelect" class="form-control">
+            <label for="localidadeUnidadeSelect" class="label">Selecionar Unidade:</label>
+            <select id="localidadeUnidadeSelect" class="input select">
                 <option value="">-- Selecione uma unidade --</option>
-                </select>
+            </select>
         </div>
         <div class="button-group">
             <button type="button" id="carregarUnidadeBtn" class="btn btn-primary">Carregar Unidade</button>
+            <button type="button" id="syncDataBtn" class="btn btn-secondary">Sincronizar Dados</button>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const cadastroForm = document.getElementById('cadastroForm');
-            const addMedidaBtn = document.getElementById('addMedidaBtn');
-            const removeMedidaBtn = document.getElementById('removeMedidaBtn');
-            const repeatMedidaBtn = document.getElementById('repeatMedidaBtn');
-            const medidaList = document.getElementById('medidaList');
-            const medidasJsonInput = document.getElementById('medidas_json');
-            const clearFormBtn = document.getElementById('clearFormBtn');
-            const localidadeUnidadeSelect = document.getElementById('localidadeUnidadeSelect');
-            const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
-            const outraAreaCheckbox = document.getElementById('outra_area_checkbox');
-            const outraAreaTexto = document.getElementById('outra_area_texto');
-            const radiosVidrosAltos = document.querySelectorAll('input[name="vidros_altos"]');
-            const perigoContainer = document.getElementById('perigoContainer');
-            const checkboxPerigo = document.getElementById('vidros_perigo');
+        // Constants (from your app.py)
+        const TIPOS_PISO = ["Paviflex", "Cerâmica", "Porcelanato", "Granilite", "Cimento Queimado", "Epoxi", "Ardósia", "Outros"];
+        const TIPOS_MEDIDA = ["Vidro", "Sanitário-Vestiário", "Área Interna", "Área Externa"];
+        const TIPOS_PAREDE = ["Alvenaria", "Estuque", "Divisórias"];
 
-            let medidasData = [];
-            let selectedMedidaIndex = null;
+        // IndexedDB Configuration
+        const DB_NAME = 'levantamentoDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'unidades';
 
-            function showMessage(message, type = 'info') {
-                const messageBox = document.createElement('div');
-                messageBox.className = `message-box ${type}`;
-                messageBox.textContent = message;
-                document.body.appendChild(messageBox);
-                setTimeout(() => {
-                    messageBox.remove();
-                }, 5000);
+        let db;
+
+        // --- IndexedDB Functions ---
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                        objectStore.createIndex('localidadeUnidade', ['localidade', 'unidade'], { unique: true });
+                        objectStore.createIndex('needsSync', 'needsSync', { unique: false });
+                        console.log('Object store created/upgraded');
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('Database opened successfully');
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error('Database error:', event.target.errorCode);
+                    reject(event.target.errorCode);
+                };
+            });
+        }
+
+        async function saveUnitToIndexedDB(unitData) {
+            await openDatabase();
+            return new Promise((resolve, reject) => {
+                // Generate a unique ID for the unit, or use existing if loading
+                const unitId = unitData.id || `${unitData.localidade}-${unitData.unidade}-${Date.now()}`;
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+
+                // Add or update the unit, marking it for sync
+                const dataToStore = { ...unitData, id: unitId, needsSync: true };
+                const request = store.put(dataToStore);
+
+                request.onsuccess = () => {
+                    console.log('Unit saved/updated in IndexedDB:', dataToStore);
+                    resolve(unitId);
+                };
+
+                request.onerror = (event) => {
+                    console.error('Error saving unit to IndexedDB:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        async function getUnitsFromIndexedDB() {
+            await openDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+
+                request.onsuccess = () => {
+                    resolve(request.result);
+                };
+
+                request.onerror = (event) => {
+                    console.error('Error getting units from IndexedDB:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        async function markUnitAsSyncedInIndexedDB(unitId) {
+            await openDatabase();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const getRequest = store.get(unitId);
+
+                getRequest.onsuccess = () => {
+                    const unit = getRequest.result;
+                    if (unit) {
+                        unit.needsSync = false;
+                        const putRequest = store.put(unit);
+                        putRequest.onsuccess = () => resolve();
+                        putRequest.onerror = (event) => reject(event.target.error);
+                    } else {
+                        reject(new Error('Unit not found in IndexedDB to mark as synced.'));
+                    }
+                };
+                getRequest.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        // --- DOM Elements ---
+        const cadastroForm = document.getElementById('cadastroForm');
+        const addMedidaBtn = document.getElementById('addMedidaBtn');
+        const removeMedidaBtn = document.getElementById('removeMedidaBtn');
+        const repeatMedidaBtn = document.getElementById('repeatMedidaBtn');
+        const addMultipleMedidasBtn = document.getElementById('addMultipleMedidasBtn');
+        const medidaList = document.getElementById('medidaList');
+        const clearFormBtn = document.getElementById('clearFormBtn');
+        const localidadeUnidadeSelect = document.getElementById('localidadeUnidadeSelect');
+        const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
+        const outraAreaCheckbox = document.getElementById('outra_area_checkbox');
+        const outraAreaTexto = document.getElementById('outra_area_texto');
+        const radiosVidrosAltos = document.querySelectorAll('input[name="vidros_altos"]');
+        const perigoContainer = document.getElementById('perigoContainer');
+        const checkboxPerigo = document.getElementById('vidros_perigo');
+        const onlineStatusDiv = document.getElementById('onlineStatus');
+        const syncDataBtn = document.getElementById('syncDataBtn');
+
+        // Added IDs for specific checkbox groups
+        const pisoCheckboxGroup = document.getElementById('pisoCheckboxGroup');
+        const paredeCheckboxGroup = document.getElementById('paredeCheckboxGroup');
+        const tipoMedidaCheckboxesGroup = document.getElementById('tipoMedidaCheckboxes');
+
+
+        let medidasData = [];
+        let selectedMedidaIndex = null;
+        let currentUnitId = null; // Store the ID of the unit currently being edited/loaded
+
+        // --- UI Functions ---
+        function showMessage(message, type = 'info') {
+            const messageBox = document.createElement('div');
+            messageBox.className = `message-box ${type}`;
+            messageBox.textContent = message;
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'message-box-close';
+            closeBtn.textContent = 'X';
+            closeBtn.onclick = () => messageBox.remove();
+            messageBox.appendChild(closeBtn);
+
+            document.body.appendChild(messageBox);
+            // Add 'show' class after a slight delay to trigger transition
+            setTimeout(() => {
+                messageBox.classList.add('show');
+            }, 10);
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                messageBox.addEventListener('transitionend', () => messageBox.remove());
+            }, 5000);
+        }
+
+        function updateOnlineStatus() {
+            if (navigator.onLine) {
+                onlineStatusDiv.textContent = 'Online';
+                onlineStatusDiv.className = 'online-status online';
+                syncDataBtn.classList.remove('disabled-input'); // Enable sync button
+                syncDataBtn.disabled = false;
+            } else {
+                onlineStatusDiv.textContent = 'Offline (Dados salvos localmente)';
+                onlineStatusDiv.className = 'online-status offline';
+                syncDataBtn.classList.add('disabled-input'); // Disable sync button
+                syncDataBtn.disabled = true;
             }
+        }
 
-            function atualizarListaMedidas() {
-                medidaList.innerHTML = '';
-                if (medidasData.length === 0) {
+        function populateCheckboxes() {
+            // Use specific IDs instead of nth-child selectors
+            pisoCheckboxGroup.innerHTML = '';
+            TIPOS_PISO.forEach(piso => {
+                pisoCheckboxGroup.innerHTML += `
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="piso" value="${piso}"> ${piso}
+                    </label>
+                `;
+            });
+
+            paredeCheckboxGroup.innerHTML = '';
+            TIPOS_PAREDE.forEach(parede => {
+                paredeCheckboxGroup.innerHTML += `
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="parede" value="${parede}"> ${parede}
+                    </label>
+                `;
+            });
+
+            tipoMedidaCheckboxesGroup.innerHTML = '';
+            TIPOS_MEDIDA.forEach(tipo => {
+                tipoMedidaCheckboxesGroup.innerHTML += `
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="tipo_medida" value="${tipo}"> ${tipo}
+                    </label>
+                `;
+            });
+        }
+
+        function atualizarListaMedidas() {
+            medidaList.innerHTML = '';
+            if (medidasData.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'no-medida-text';
+                li.textContent = 'Nenhuma medida adicionada.';
+                medidaList.appendChild(li);
+            } else {
+                [...medidasData].reverse().forEach((medida, reversedIndex) => {
+                    const index = medidasData.length - 1 - reversedIndex; // Get original index
                     const li = document.createElement('li');
-                    li.textContent = 'Nenhuma medida adicionada.';
-                    medidaList.appendChild(li);
-                } else {
-                    [...medidasData].reverse().forEach((medida, reversedIndex) => {
-                        const index = medidasData.length - 1 - reversedIndex;
-                        const li = document.createElement('li');
-                        li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
-                        if (index === selectedMedidaIndex) {
-                            li.classList.add('selected');
-                        }
-                        li.addEventListener('click', () => {
-                            selectedMedidaIndex = index;
-                            atualizarListaMedidas();
-                        });
-                        medidaList.appendChild(li);
-                    });
-                }
-                medidasJsonInput.value = JSON.stringify(medidasData);
-            }
+                    li.className = `medida-list-item ${index === selectedMedidaIndex ? 'selected' : ''}`;
+                    li.textContent = `${medida[0]}: ${medida[1]}m x ${medida[2]}m = ${medida[3].toFixed(2)} m²`;
+                    li.dataset.index = index; // Store original index in dataset for selection
 
+                    li.addEventListener('click', () => {
+                        selectedMedidaIndex = index;
+                        atualizarListaMedidas(); // Re-render to apply selection class
+                    });
+                    medidaList.appendChild(li);
+                });
+            }
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', async function() {
+            await openDatabase(); // Ensure DB is open on load
+            populateCheckboxes(); // Populate dynamic checkboxes
+
+            updateOnlineStatus(); // Initial status check
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+
+            // Set current date
+            document.getElementById('data').value = new Date().toISOString().slice(0, 10);
+
+            // Vidros Altos logic
             radiosVidrosAltos.forEach(radio => {
                 radio.addEventListener('change', () => {
                     if (radio.value === "Sim" && radio.checked) {
-                        perigoContainer.style.display = 'block';
+                        perigoContainer.classList.remove('hidden');
                     } else if (radio.value === "Não" && radio.checked) {
-                        perigoContainer.style.display = 'none';
+                        perigoContainer.classList.add('hidden');
                         checkboxPerigo.checked = false;
                     }
                 });
+            });
+
+            // Outra Área logic
+            outraAreaCheckbox.addEventListener('change', () => {
+                outraAreaTexto.disabled = !outraAreaCheckbox.checked;
+                if (!outraAreaCheckbox.checked) {
+                    outraAreaTexto.value = '';
+                    outraAreaTexto.classList.add('disabled-input');
+                } else {
+                    outraAreaTexto.classList.remove('disabled-input');
+                }
             });
 
             addMedidaBtn.addEventListener('click', () => {
@@ -248,7 +618,6 @@
                 atualizarListaMedidas();
             });
 
-            const addMultipleMedidasBtn = document.getElementById('addMultipleMedidasBtn');
             addMultipleMedidasBtn.addEventListener('click', () => {
                 const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
                 const tiposSelecionados = Array.from(tipoMedidaCheckboxes).map(cb => cb.value);
@@ -288,9 +657,12 @@
 
             removeMedidaBtn.addEventListener('click', () => {
                 if (selectedMedidaIndex !== null) {
-                    medidasData.splice(selectedMedidaIndex, 1);
-                    selectedMedidaIndex = null;
-                    atualizarListaMedidas();
+                    const confirmDelete = confirm('Tem certeza que deseja excluir esta medida?');
+                    if (confirmDelete) {
+                        medidasData.splice(selectedMedidaIndex, 1);
+                        selectedMedidaIndex = null;
+                        atualizarListaMedidas();
+                    }
                 } else {
                     showMessage('Selecione uma medida para excluir.', 'warning');
                 }
@@ -314,64 +686,76 @@
                 }
             });
 
-            outraAreaCheckbox.addEventListener('change', () => {
-                outraAreaTexto.disabled = !outraAreaCheckbox.checked;
-                if (!outraAreaCheckbox.checked) {
-                    outraAreaTexto.value = '';
-                }
-            });
-
             cadastroForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
-                const formData = new FormData(cadastroForm);
-                formData.append('medidas_json', JSON.stringify(medidasData));
-                
-                formData.append('vidros_perigo', checkboxPerigo.checked ? 'Sim' : 'Não');
 
-                if (outraAreaCheckbox.checked) {
-                    formData.append('outra_area', outraAreaTexto.value);
-                } else {
-                    formData.append('outra_area', '');
+                const formData = new FormData(cadastroForm);
+                const unitData = {};
+                for (let [key, value] of formData.entries()) {
+                    // Handle checkboxes for multiple values (piso, parede, tipo_medida)
+                    if (['piso', 'parede', 'tipo_medida'].includes(key)) {
+                        if (!unitData[key]) unitData[key] = [];
+                        unitData[key].push(value);
+                    } else {
+                        unitData[key] = value;
+                    }
                 }
 
+                // Manual handling for specific checkboxes not in FormData by default
+                unitData.vidros_perigo = checkboxPerigo.checked ? 'Sim' : 'Não';
+                unitData.estacionamento = document.getElementById('estacionamento').checked;
+                unitData.gramado = document.getElementById('gramado').checked;
+                unitData.curativo = document.getElementById('curativo').checked;
+                unitData.vacina = document.getElementById('vacina').checked;
+                unitData.outra_area = outraAreaCheckbox.checked ? outraAreaTexto.value.trim() : '';
+
+                // Add measures data
+                unitData.medidas = medidasData;
+
+                // Set a unique ID for the unit based on localidade and unidade (can be overwritten for existing)
+                unitData.id = `${unitData.localidade.trim()}-${unitData.unidade.trim()}`;
+
                 try {
-                    const response = await fetch('/salvar_unidade', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const result = await response.json();
-                    if (result.status === 'success') {
-                        showMessage(result.message, 'success');
-                        await carregarListaUnidadesSalvas();
-                        clearForm();
-                    } else {
-                        showMessage(result.message, 'error');
+                    await saveUnitToIndexedDB(unitData);
+                    let message = 'Unidade salva localmente com sucesso!';
+                    if (!unitData.email_copia.trim()) {
+                        message += " O campo 'Seu E-mail para Cópia' estava em branco. O e-mail será enviado apenas para o destinatário principal (quando sincronizar).";
                     }
+                    showMessage(message, 'success');
+                    await carregarListaUnidadesSalvas(); // Update dropdown
+                    clearForm();
                 } catch (error) {
-                    console.error('Erro ao salvar unidade:', error);
-                    showMessage('Erro ao salvar unidade.', 'error');
+                    console.error('Erro ao salvar unidade localmente:', error);
+                    showMessage(`Erro ao salvar unidade localmente: ${error.message}`, 'error');
                 }
             });
 
             clearFormBtn.addEventListener('click', clearForm);
 
-            function clearForm() {
+            async function clearForm() {
                 cadastroForm.reset();
                 document.getElementById('data').value = new Date().toISOString().slice(0, 10);
                 document.querySelector('input[name="vidros_altos"][value="Não"]').checked = true;
                 
-                perigoContainer.style.display = 'none';
+                perigoContainer.classList.add('hidden');
                 checkboxPerigo.checked = false;
 
                 medidasData = [];
                 selectedMedidaIndex = null;
                 atualizarListaMedidas();
-                document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                
+                // Uncheck all dynamic checkboxes
+                document.querySelectorAll('input[type="checkbox"][name="piso"]').forEach(cb => cb.checked = false);
+                document.querySelectorAll('input[type="checkbox"][name="parede"]').forEach(cb => cb.checked = false);
+                document.querySelectorAll('input[type="checkbox"][name="tipo_medida"]').forEach(cb => cb.checked = false);
+
                 localidadeUnidadeSelect.value = "";
                 
                 outraAreaCheckbox.checked = false;
                 outraAreaTexto.disabled = true;
+                outraAreaTexto.classList.add('disabled-input');
                 outraAreaTexto.value = '';
+                currentUnitId = null; // Clear current unit ID
             }
 
             carregarUnidadeBtn.addEventListener('click', async () => {
@@ -382,103 +766,173 @@
                 }
 
                 try {
-                    const response = await fetch('/carregar_unidade', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ local_unidade: selectedValue })
-                    });
-                    const result = await response.json();
-                    if (result.status === 'success') {
-                        const data = result.data;
-                        clearForm(); 
+                    await openDatabase();
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    // The value in the select is the 'id' field: localidade-unidade-timestamp
+                    const request = store.get(selectedValue); 
 
-                        document.getElementById('localidade').value = selectedValue.split(' - ')[0];
-                        document.getElementById('unidade').value = selectedValue.split(' - ')[1];
-                        document.getElementById('data').value = data.data || '';
-                        document.getElementById('responsavel').value = data.responsavel || '';
-                        // NOVO: Carrega o e-mail de cópia
-                        document.getElementById('email_copia').value = data.email_copia || '';
-                        document.getElementById('qtd_func').value = data.qtd_func || '';
+                    request.onsuccess = () => {
+                        const data = request.result;
+                        if (data) {
+                            clearForm(); 
+                            
+                            // Restore currentUnitId for potential updates
+                            currentUnitId = data.id;
 
-                        (data.piso || []).forEach(p => {
-                            const cb = document.querySelector(`input[name="piso_${p}"]`);
-                            if (cb) cb.checked = true;
-                        });
+                            document.getElementById('localidade').value = data.localidade || '';
+                            document.getElementById('unidade').value = data.unidade || '';
+                            document.getElementById('data').value = data.data || new Date().toISOString().slice(0, 10);
+                            document.getElementById('responsavel').value = data.responsavel || '';
+                            document.getElementById('email_copia').value = data.email_copia || '';
+                            document.getElementById('qtd_func').value = data.qtd_func || '';
 
-                        const vidrosAltosValue = data.vidros_altos || 'Não';
-                        document.querySelector(`input[name="vidros_altos"][value="${vidrosAltosValue}"]`).checked = true;
-                        if (vidrosAltosValue === 'Sim') {
-                            perigoContainer.style.display = 'block';
-                            checkboxPerigo.checked = data.vidros_perigo === 'Sim';
+                            // Restore checkboxes for 'piso'
+                            document.querySelectorAll('input[name="piso"]').forEach(cb => {
+                                cb.checked = (data.piso || []).includes(cb.value);
+                            });
+
+                            const vidrosAltosValue = data.vidros_altos || 'Não';
+                            document.querySelector(`input[name="vidros_altos"][value="${vidrosAltosValue}"]`).checked = true;
+                            if (vidrosAltosValue === 'Sim') {
+                                perigoContainer.classList.remove('hidden');
+                                checkboxPerigo.checked = data.vidros_perigo === 'Sim';
+                            } else {
+                                perigoContainer.classList.add('hidden');
+                                checkboxPerigo.checked = false;
+                            }
+
+                            // Restore checkboxes for 'parede'
+                            document.querySelectorAll('input[name="parede"]').forEach(cb => {
+                                cb.checked = (data.paredes || []).includes(cb.value);
+                            });
+
+                            document.getElementById('estacionamento').checked = data.estacionamento || false;
+                            document.getElementById('gramado').checked = data.gramado || false;
+                            document.getElementById('curativo').checked = data.curativo || false;
+                            document.getElementById('vacina').checked = data.vacina || false;
+                            
+                            const outraAreaValue = data.outra_area || '';
+                            outraAreaCheckbox.checked = !!outraAreaValue;
+                            outraAreaTexto.value = outraAreaValue;
+                            outraAreaTexto.disabled = !outraAreaCheckbox.checked;
+                            if (outraAreaCheckbox.checked) {
+                                outraAreaTexto.classList.remove('disabled-input');
+                            } else {
+                                outraAreaTexto.classList.add('disabled-input');
+                            }
+
+                            medidasData = data.medidas || [];
+                            // Restore checkboxes for 'tipo_medida' based on measuresData if needed,
+                            // or leave blank for new measure input
+                            document.querySelectorAll('input[name="tipo_medida"]').forEach(cb => cb.checked = false);
+
+
+                            atualizarListaMedidas();
+                            showMessage('Unidade carregada com sucesso!', 'success');
                         } else {
-                            perigoContainer.style.display = 'none';
-                            checkboxPerigo.checked = false;
+                            showMessage('Unidade não encontrada localmente.', 'error');
                         }
+                    };
+                    request.onerror = (event) => {
+                        console.error('Error loading unit from IndexedDB:', event.target.error);
+                        showMessage('Erro ao carregar unidade localmente.', 'error');
+                    };
 
-                        (data.paredes || []).forEach(p => {
-                            const cb = document.querySelector(`input[name="parede_${p}"]`);
-                            if (cb) cb.checked = true;
-                        });
-
-                        document.querySelector('input[name="estacionamento"]').checked = data.estacionamento || false;
-                        document.querySelector('input[name="gramado"]').checked = data.gramado || false;
-                        document.querySelector('input[name="curativo"]').checked = data.curativo || false;
-                        document.querySelector('input[name="vacina"]').checked = data.vacina || false;
-                        
-                        const outraAreaValue = data.outra_area || '';
-                        outraAreaCheckbox.checked = !!outraAreaValue;
-                        outraAreaTexto.value = outraAreaValue;
-                        outraAreaTexto.disabled = !outraAreaCheckbox.checked;
-
-                        medidasData = data.medidas || [];
-                        atualizarListaMedidas();
-                        showMessage('Unidade carregada com sucesso!', 'success');
-                    } else {
-                        showMessage(result.message, 'error');
-                    }
                 } catch (error) {
                     console.error('Erro ao carregar unidade:', error);
-                    showMessage('Erro ao carregar unidade.', 'error');
+                    showMessage('Erro ao carregar unidade salva.', 'error');
                 }
             });
 
             async function carregarListaUnidadesSalvas() {
                 try {
-                    const response = await fetch('/get_localidades_unidades', { method: 'GET' });
+                    const units = await getUnitsFromIndexedDB();
+                    localidadeUnidadeSelect.innerHTML = '<option value="">-- Selecione uma unidade --</option>';
+                    units.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id; // Use the unique ID as value
+                        option.textContent = `${item.localidade} - ${item.unidade}`;
+                        localidadeUnidadeSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar lista de unidades salvas:', error);
+                    showMessage('Erro ao carregar lista de unidades salvas localmente.', 'error');
+                }
+            }
+            
+            // Initial load of saved units
+            carregarListaUnidadesSalvas();
 
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('Erro na resposta do servidor:', response.status, response.statusText, errorText);
-                        showMessage('Erro ao carregar lista de unidades salvas.', 'error');
+            // --- Sync Button Logic (Conceptual) ---
+            syncDataBtn.addEventListener('click', async () => {
+                if (!navigator.onLine) {
+                    showMessage('Você está offline. Conecte-se à internet para sincronizar.', 'warning');
+                    return;
+                }
+
+                showMessage('Iniciando sincronização...', 'info');
+                try {
+                    const unitsToSync = (await getUnitsFromIndexedDB()).filter(unit => unit.needsSync);
+
+                    if (unitsToSync.length === 0) {
+                        showMessage('Nenhuma unidade pendente para sincronização.', 'info');
                         return;
                     }
 
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        const listaUnidades = await response.json();
-                        localidadeUnidadeSelect.innerHTML = '<option value="">-- Selecione uma unidade --</option>';
-                        listaUnidades.forEach(item => {
-                            const option = document.createElement('option');
-                            option.value = item;
-                            option.textContent = item;
-                            localidadeUnidadeSelect.appendChild(option);
-                        });
-                    } else {
-                        const rawText = await response.text();
-                        console.error('Resposta inesperada do servidor (não é JSON):', rawText);
-                        showMessage('Resposta inesperada do servidor ao carregar unidades.', 'error');
-                    }
+                    for (const unit of unitsToSync) {
+                        try {
+                            // --- IMPORTANT: This is a placeholder for your actual backend API call ---
+                            // Replace this with a real fetch to your Flask API or Firebase Cloud Function
+                            // that handles saving to your main database and sending emails.
+                            console.log('Simulando envio de unidade para o servidor:', unit);
 
+                            // Example of fetching to a hypothetical Flask endpoint (replace URL)
+                            /*
+                            const response = await fetch('/api/salvar_unidade_remoto', { // Replace with your actual backend endpoint
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    // 'Authorization': 'Bearer YOUR_AUTH_TOKEN' // If you have auth
+                                },
+                                body: JSON.stringify(unit)
+                            });
+
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.message || 'Erro desconhecido ao sincronizar.');
+                            }
+
+                            const result = await response.json();
+                            if (result.status === 'success') {
+                                await markUnitAsSyncedInIndexedDB(unit.id);
+                                showMessage(`Unidade '${unit.localidade} - ${unit.unidade}' sincronizada com sucesso!`, 'success');
+                            } else {
+                                showMessage(`Falha ao sincronizar '${unit.localidade} - ${unit.unidade}': ${result.message}`, 'error');
+                            }
+                            */
+
+                            // For this simulation, we'll just mark as synced after a delay
+                            await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+                            await markUnitAsSyncedInIndexedDB(unit.id);
+                            showMessage(`Unidade '${unit.localidade} - ${unit.unidade}' sincronizada (simulada) com sucesso!`, 'success');
+
+                        } catch (syncError) {
+                            console.error(`Erro ao sincronizar unidade ${unit.id}:`, syncError);
+                            showMessage(`Erro ao sincronizar '${unit.localidade} - ${unit.unidade}': ${syncError.message || 'Verifique o console.'}`, 'error');
+                            // Continue to try syncing other units even if one fails
+                        }
+                    }
+                    showMessage('Sincronização concluída. Verifique as mensagens para detalhes.', 'info');
                 } catch (error) {
-                    console.error('Erro ao recarregar lista de unidades:', error);
-                    showMessage('Erro ao carregar lista de unidades salvas.', 'error');
+                    console.error('Erro geral na sincronização:', error);
+                    showMessage('Erro geral na sincronização. Tente novamente mais tarde.', 'error');
+                } finally {
+                    carregarListaUnidadesSalvas(); // Refresh the list after sync attempt
                 }
-            }
+            });
 
             atualizarListaMedidas();
-            carregarListaUnidadesSalvas();
         });
     </script>
 </body>

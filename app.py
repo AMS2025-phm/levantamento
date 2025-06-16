@@ -11,8 +11,10 @@ from email.mime.text import MIMEText
 from email import encoders
 import re
 import unicodedata
+from flask_cors import CORS # Importar CORS
 
 app = Flask(__name__)
+CORS(app) # Habilitar CORS para todas as rotas (importante para comunicação entre domínios)
 
 # Nome do arquivo onde os dados são armazenados
 ARQUIVO_DADOS = "localidades.json"
@@ -37,8 +39,12 @@ FIXED_RECIPIENT_EMAIL = "comercialservico2025@gmail.com"
 def carregar_dados():
     """Carrega os dados existentes do arquivo JSON."""
     if os.path.exists(ARQUIVO_DADOS):
-        with open(ARQUIVO_DADOS, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(ARQUIVO_DADOS, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print(f"Erro: Arquivo {ARQUIVO_DADOS} está corrompido ou vazio. Criando novo.")
+            return {}
     return {}
 
 def salvar_dados(dados):
@@ -62,7 +68,7 @@ def generate_excel_and_send_email(localidade, unidade, info, email_copia):
     ws_detalhe.append(["Unidade", unidade])
     ws_detalhe.append(["Data", info.get("data", "")])
     ws_detalhe.append(["Responsável", info.get("responsavel", "")])
-    ws_detalhe.append(["E-mail do Inspetor", info.get("email_copia", "")]) # Adiciona o e-mail do inspetor na planilha
+    ws_detalhe.append(["E-mail do Inspetor", info.get("email_copia", "")])
     ws_detalhe.append(["Tipo de Piso", ", ".join(info.get("piso", []))])
     ws_detalhe.append(["Vidros Altos", info.get("vidros_altos", "")])
     
@@ -96,6 +102,7 @@ def generate_excel_and_send_email(localidade, unidade, info, email_copia):
         abas[tipo_aba]["sheet"].append(CABECALHO_MEDIDAS)
 
     for medida in info.get("medidas", []):
+        # Medida should be a list [tipo, comp, larg, area]
         if isinstance(medida, list) and len(medida) == 4:
             tipo, comp, larg, area = medida
             if tipo in abas:
@@ -110,15 +117,18 @@ def generate_excel_and_send_email(localidade, unidade, info, email_copia):
     ws_detalhe.append(["Total Sanitário-Vestiário (m²)", round(abas["Sanitário-Vestiário"]["total_area"], 2)])
     ws_detalhe.append(["Total Área Externa (m²)", round(abas["Área Externa"]["total_area"], 2)])
 
+    # Remove empty sheets
     for sheet_name, sheet_data in list(abas.items()):
         if sheet_data["sheet"].max_row == 1 or (sheet_data["sheet"].max_row == 0 and sheet_data["sheet"].max_column == 0):
             wb.remove(sheet_data["sheet"])
             
+    # Remove default sheet if empty
     if "Sheet" in wb.sheetnames:
         default_sheet = wb["Sheet"]
         if default_sheet.max_row == 0 or (default_sheet.max_row == 1 and all(cell.value is None for cell in default_sheet[1])):
             wb.remove(default_sheet)
 
+    # Set active sheet to Detalhe if it exists
     if "Detalhe" in wb.sheetnames:
         wb.active = wb["Detalhe"]
 
@@ -159,8 +169,8 @@ def generate_excel_and_send_email(localidade, unidade, info, email_copia):
     Data: {info.get('data', 'Não informada')}
     Responsável: {info.get('responsavel', 'Não informado')}
     """
-    if outra_area_valor:
-        body += f"\nOutra Área: {outra_area_valor}"
+    if info.get("outra_area"):
+        body += f"\nOutra Área: {info.get('outra_area')}"
     body += """
 
     Atenciosamente,
@@ -200,16 +210,67 @@ def index():
         data_hoje=data_hoje,
     )
 
-@app.route('/get_localidades_unidades', methods=['GET'])
-def get_localidades_unidades():
-    """Retorna a lista de localidades e unidades para o dropdown em JSON."""
-    localidades = carregar_dados()
-    lista_localidades_unidades = []
-    for local, unidades in sorted(localidades.items()):
-        for unidade_nome in sorted(unidades.keys()):
-            lista_localidades_unidades.append(f"{local} - {unidade_nome}")
-    return jsonify(lista_localidades_unidades)
+# Nova rota para a simulação do aplicativo móvel para enviar dados e acionar e-mail
+@app.route('/api/sync_unit', methods=['POST'])
+def api_sync_unit():
+    """
+    Recebe os dados de uma unidade do frontend (simulação do app móvel),
+    salva localmente e tenta enviar e-mail.
+    """
+    data_from_app = request.get_json()
 
+    if not data_from_app:
+        return jsonify({"status": "error", "message": "Dados inválidos."}), 400
+
+    localidade = data_from_app.get('localidade', '').strip()
+    unidade = data_from_app.get('unidade', '').strip()
+    
+    if not localidade or not unidade:
+        return jsonify({"status": "error", "message": "Localidade e Unidade são campos obrigatórios."}), 400
+
+    # Remova o 'id' dos dados antes de salvar no JSON se ele for apenas para o IndexedDB local
+    # Ou ajuste sua lógica de salvamento para usar o 'id' como chave se for único globalmente.
+    # Por agora, removeremos o 'id' para que a estrutura seja compatível com a original.
+    unit_id = data_from_app.pop('id', None) # Remove 'id' if present, not needed for original save logic
+    
+    unit_data = {
+        "data": data_from_app.get('data', ''),
+        "responsavel": data_from_app.get('responsavel', ''),
+        "email_copia": data_from_app.get('email_copia', '').strip(),
+        "qtd_func": data_from_app.get('qtd_func', ''),
+        "piso": data_from_app.get('piso', []),
+        "vidros_altos": data_from_app.get('vidros_altos', 'Não'),
+        "vidros_perigo": data_from_app.get('vidros_perigo', 'Não'),
+        "paredes": data_from_app.get('paredes', []),
+        "estacionamento": data_from_app.get('estacionamento', False),
+        "gramado": data_from_app.get('gramado', False),
+        "curativo": data_from_app.get('curativo', False),
+        "vacina": data_from_app.get('vacina', False),
+        "medidas": data_from_app.get('medidas', []),
+        "outra_area": data_from_app.get('outra_area', '').strip()
+    }
+
+    localidades = carregar_dados()
+    if localidade not in localidades:
+        localidades[localidade] = {}
+    
+    localidades[localidade][unidade] = unit_data
+    salvar_dados(localidades)
+
+    try:
+        generate_excel_and_send_email(localidade, unidade, unit_data, unit_data["email_copia"])
+        return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"}), 200
+    except Exception as e:
+        print(f"Erro ao gerar Excel/enviar e-mail na API de sincronização: {e}")
+        return jsonify({"status": "error", "message": f"Erro ao gerar o Excel ou enviar o e-mail: {str(e)}."}), 500
+
+# Rota para verificar o status do servidor
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """Retorna o status 'ok' para verificar a conectividade do backend."""
+    return jsonify({"status": "ok"}), 200
+
+# Sua rota original para salvar unidades (mantida para compatibilidade, embora a nova rota API seja preferível para o app)
 @app.route('/salvar_unidade', methods=['POST'])
 def salvar_unidade():
     """Salva os dados de uma unidade submetidos via formulário, gera Excel e envia por e-mail."""
@@ -272,10 +333,7 @@ def salvar_unidade():
     localidades[localidade][unidade] = unit_data
     salvar_dados(localidades)
 
-    # Inicializa a mensagem de sucesso
     success_message = "Unidade salva e Excel enviado por e-mail com sucesso!"
-
-    # Verifica se o e-mail de cópia está em branco e adiciona a mensagem de aviso
     if not email_copia:
         success_message += " O campo 'Seu E-mail para Cópia' estava em branco, então o e-mail foi enviado apenas para o destinatário principal."
 
@@ -303,5 +361,17 @@ def carregar_unidade():
     else:
         return jsonify({"status": "error", "message": "Unidade não encontrada."}), 404
 
+@app.route('/get_localidades_unidades', methods=['GET'])
+def get_localidades_unidades():
+    """Retorna a lista de localidades e unidades para o dropdown em JSON."""
+    localidades = carregar_dados()
+    lista_localidades_unidades = []
+    for local, unidades in sorted(localidades.items()):
+        for unidade_nome in sorted(unidades.keys()):
+            lista_localidades_unidades.append(f"{local} - {unidade_nome}")
+    return jsonify(lista_localidades_unidades)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
+
