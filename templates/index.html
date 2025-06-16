@@ -55,14 +55,12 @@
                 </div>
             </div>
 
-		<!-- Adicionado abaixo da opção "Vidros Altos" -->
-		<div class="form-group" id="perigoContainer" style="display:none;">
-    			<label>
-        			<input type="checkbox" name="vidros_perigo" id="vidros_perigo">
-        			Necessita equipamento adicional/ representa perigo
-    			</label>
-		</div>
-
+            <div class="form-group" id="perigoContainer" style="display:none;">
+                <label>
+                    <input type="checkbox" name="vidros_perigo" id="vidros_perigo">
+                    Necessita equipamento adicional/ representa perigo
+                </label>
+            </div>
 
             <div class="form-group">
                 <label>Paredes:</label>
@@ -162,13 +160,11 @@
             const clearFormBtn = document.getElementById('clearFormBtn');
             const localidadeUnidadeSelect = document.getElementById('localidadeUnidadeSelect');
             const carregarUnidadeBtn = document.getElementById('carregarUnidadeBtn');
-
-            // NOVOS ELEMENTOS
             const outraAreaCheckbox = document.getElementById('outra_area_checkbox');
             const outraAreaTexto = document.getElementById('outra_area_texto');
-	    const radiosVidrosAltos = document.querySelectorAll('input[name="vidros_altos"]');
-	    const perigoContainer = document.getElementById('perigoContainer');
-	    const checkboxPerigo = document.getElementById('vidros_perigo');
+            const radiosVidrosAltos = document.querySelectorAll('input[name="vidros_altos"]');
+            const perigoContainer = document.getElementById('perigoContainer');
+            const checkboxPerigo = document.getElementById('vidros_perigo');
 
             let medidasData = [];
             let selectedMedidaIndex = null;
@@ -208,6 +204,18 @@
                 medidasJsonInput.value = JSON.stringify(medidasData);
             }
 
+            // CORREÇÃO: Listener de evento para os botões de rádio de vidros altos movido para cá
+            radiosVidrosAltos.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (radio.value === "Sim" && radio.checked) {
+                        perigoContainer.style.display = 'block';
+                    } else if (radio.value === "Não" && radio.checked) {
+                        perigoContainer.style.display = 'none';
+                        checkboxPerigo.checked = false;
+                    }
+                });
+            });
+
             addMedidaBtn.addEventListener('click', () => {
                 const tipoMedidaCheckboxes = document.querySelectorAll('input[name="tipo_medida"]:checked');
                 const tiposSelecionados = Array.from(tipoMedidaCheckboxes).map(cb => cb.value);
@@ -230,7 +238,6 @@
                     medidasData.push([tipo, comprimento, largura, area]);
                 });
 
-                // CORREÇÃO: Troca 'comprprimentoInput' por 'comprimentoInput'
                 comprimentoInput.value = '';
                 larguraInput.value = '';
                 selectedMedidaIndex = null;
@@ -303,11 +310,10 @@
                 }
             });
 
-            // NOVO: Lógica para habilitar/desabilitar o campo de texto da "Outra Área"
             outraAreaCheckbox.addEventListener('change', () => {
                 outraAreaTexto.disabled = !outraAreaCheckbox.checked;
                 if (!outraAreaCheckbox.checked) {
-                    outraAreaTexto.value = ''; // Limpa o campo se desativado
+                    outraAreaTexto.value = '';
                 }
             });
 
@@ -315,12 +321,14 @@
                 event.preventDefault();
                 const formData = new FormData(cadastroForm);
                 formData.append('medidas_json', JSON.stringify(medidasData));
+                
+                // CORREÇÃO: Adiciona o valor de 'vidros_perigo' ao formData
+                formData.append('vidros_perigo', checkboxPerigo.checked ? 'Sim' : 'Não');
 
-                // NOVO: Adiciona o valor da "Outra Área" ao formData se o checkbox estiver marcado
                 if (outraAreaCheckbox.checked) {
                     formData.append('outra_area', outraAreaTexto.value);
                 } else {
-                    formData.append('outra_area', ''); // Envia string vazia se não marcado
+                    formData.append('outra_area', '');
                 }
 
                 try {
@@ -348,28 +356,17 @@
                 cadastroForm.reset();
                 document.getElementById('data').value = new Date().toISOString().slice(0, 10);
                 document.querySelector('input[name="vidros_altos"][value="Não"]').checked = true;
+                
+                // CORREÇÃO: Reseta o estado do container de perigo e do checkbox
+                perigoContainer.style.display = 'none';
+                checkboxPerigo.checked = false;
+
                 medidasData = [];
                 selectedMedidaIndex = null;
                 atualizarListaMedidas();
                 document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
                 localidadeUnidadeSelect.value = "";
-               
-		radiosVidrosAltos.forEach(radio => {
-    			radio.addEventListener('change', () => {
-        			if (radio.value === "Sim" && radio.checked) {
-            				perigoContainer.style.display = 'block';
-        			} else if (radio.value === "Não" && radio.checked) {
-            				perigoContainer.style.display = 'none';
-            				checkboxPerigo.checked = false;
-        			}
-    			});
-		});
-
-		// Ao montar o FormData no submit, inclua:
-		formData.append('vidros_perigo', checkboxPerigo.checked ? 'Sim' : 'Não');
-
-
-		 // NOVO: Reseta o estado do campo "Outra Área"
+                
                 outraAreaCheckbox.checked = false;
                 outraAreaTexto.disabled = true;
                 outraAreaTexto.value = '';
@@ -393,21 +390,30 @@
                     const result = await response.json();
                     if (result.status === 'success') {
                         const data = result.data;
+                        clearForm(); // Limpa o formulário antes de carregar novos dados
+
                         document.getElementById('localidade').value = selectedValue.split(' - ')[0];
                         document.getElementById('unidade').value = selectedValue.split(' - ')[1];
                         document.getElementById('data').value = data.data || '';
                         document.getElementById('responsavel').value = data.responsavel || '';
                         document.getElementById('qtd_func').value = data.qtd_func || '';
 
-                        document.querySelectorAll('input[name^="piso_"]').forEach(cb => cb.checked = false);
                         (data.piso || []).forEach(p => {
                             const cb = document.querySelector(`input[name="piso_${p}"]`);
                             if (cb) cb.checked = true;
                         });
 
-                        document.querySelector(`input[name="vidros_altos"][value="${data.vidros_altos || 'Não'}"]`).checked = true;
+                        // CORREÇÃO: Lógica para carregar o estado de vidros altos e perigo
+                        const vidrosAltosValue = data.vidros_altos || 'Não';
+                        document.querySelector(`input[name="vidros_altos"][value="${vidrosAltosValue}"]`).checked = true;
+                        if (vidrosAltosValue === 'Sim') {
+                            perigoContainer.style.display = 'block';
+                            checkboxPerigo.checked = data.vidros_perigo === 'Sim';
+                        } else {
+                            perigoContainer.style.display = 'none';
+                            checkboxPerigo.checked = false;
+                        }
 
-                        document.querySelectorAll('input[name^="parede_"]').forEach(cb => cb.checked = false);
                         (data.paredes || []).forEach(p => {
                             const cb = document.querySelector(`input[name="parede_${p}"]`);
                             if (cb) cb.checked = true;
@@ -418,14 +424,12 @@
                         document.querySelector('input[name="curativo"]').checked = data.curativo || false;
                         document.querySelector('input[name="vacina"]').checked = data.vacina || false;
                         
-                        // NOVO: Carrega o estado e valor da "Outra Área"
                         const outraAreaValue = data.outra_area || '';
-                        outraAreaCheckbox.checked = !!outraAreaValue; // Marca se houver valor
+                        outraAreaCheckbox.checked = !!outraAreaValue;
                         outraAreaTexto.value = outraAreaValue;
-                        outraAreaTexto.disabled = !outraAreaCheckbox.checked; // Habilita se marcado
+                        outraAreaTexto.disabled = !outraAreaCheckbox.checked;
 
                         medidasData = data.medidas || [];
-                        selectedMedidaIndex = null;
                         atualizarListaMedidas();
                         showMessage('Unidade carregada com sucesso!', 'success');
                     } else {
@@ -443,15 +447,14 @@
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.error('Erro na resposta do servidor ao carregar unidades:', response.status, response.statusText, errorText);
-                        showMessage('Erro ao carregar lista de unidades salvas. Verifique os logs do servidor.', 'error');
+                        console.error('Erro na resposta do servidor:', response.status, response.statusText, errorText);
+                        showMessage('Erro ao carregar lista de unidades salvas.', 'error');
                         return;
                     }
 
                     const contentType = response.headers.get("content-type");
                     if (contentType && contentType.includes("application/json")) {
                         const listaUnidades = await response.json();
-                        
                         localidadeUnidadeSelect.innerHTML = '<option value="">-- Selecione uma unidade --</option>';
                         listaUnidades.forEach(item => {
                             const option = document.createElement('option');
@@ -462,7 +465,7 @@
                     } else {
                         const rawText = await response.text();
                         console.error('Resposta inesperada do servidor (não é JSON):', rawText);
-                        showMessage('Resposta inesperada do servidor ao carregar unidades. Formato inválido.', 'error');
+                        showMessage('Resposta inesperada do servidor ao carregar unidades.', 'error');
                     }
 
                 } catch (error) {
