@@ -259,7 +259,7 @@ def salvar_unidade():
         "piso": piso_selecionado,
         "vidros_altos": vidros_altos,
         "vidros_perigo": request.form.get("vidros_perigo", "Não"),
-	"paredes": paredes_selecionadas,
+        "paredes": paredes_selecionadas,
         "estacionamento": estacionamento,
         "gramado": gramado,
         "curativo": curativo,
@@ -277,8 +277,8 @@ def salvar_unidade():
 
     try:
         generate_excel_and_send_email(localidade, unidade, unit_data)
-        
-	return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"})
+        # CORREÇÃO: A linha abaixo foi corretamente indentada para ficar dentro do bloco 'try'.
+        return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"})
     except Exception as e:
         print(f"Erro ao gerar Excel/enviar e-mail: {e}")
         return jsonify({"status": "error", "message": f"Unidade salva, mas houve um erro ao gerar o Excel ou enviar o e-mail: {str(e)}."}), 500
