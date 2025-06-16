@@ -151,12 +151,12 @@ def generate_excel_and_send_email(localidade, unidade, info):
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
     msg['To'] = FIXED_RECIPIENT_EMAIL
-    msg['Subject'] = f"Dados de Cadastro da Unidade: {localidade} - {unidade}"
+    msg['Subject'] = f"Levantamento das Medidas da Unidade: {localidade} - {unidade}"
 
     body = f"""
     Prezado(a),
 
-    Segue em anexo a planilha Excel com os dados de cadastro da unidade {localidade} - {unidade}.
+    Segue em anexo a planilha Excel com os dados do Levantamento realizado na unidade {localidade} - {unidade}.
 
     Data: {info.get('data', 'Não informada')}
     Responsável: {info.get('responsavel', 'Não informado')}
@@ -166,7 +166,7 @@ def generate_excel_and_send_email(localidade, unidade, info):
     body += """
 
     Atenciosamente,
-    Seu Sistema de Cadastro
+    Equipe de levantamento de campo
     """
     
     msg.attach(MIMEText(body, 'plain', 'utf-8'))
