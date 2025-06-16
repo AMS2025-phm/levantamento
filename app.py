@@ -64,7 +64,12 @@ def generate_excel_and_send_email(localidade, unidade, info):
     ws_detalhe.append(["Responsável", info.get("responsavel", "")])
     ws_detalhe.append(["Tipo de Piso", ", ".join(info.get("piso", []))])
     ws_detalhe.append(["Vidros Altos", info.get("vidros_altos", "")])
-    ws_detalhe.append(["Vidros com Risco", info.get("vidros_perigo", "Não")])
+    
+    # ALTERAÇÃO: Lógica para exibir a mensagem completa no Excel se o checkbox for marcado
+    vidros_perigo_status = info.get("vidros_perigo", "Não")
+    texto_vidros_risco = "Necessita equipamento adicional/ representa perigo" if vidros_perigo_status == "Sim" else "Não"
+    ws_detalhe.append(["Vidros com Risco", texto_vidros_risco])
+
     ws_detalhe.append(["Paredes", ", ".join(info.get("paredes", []))])
     ws_detalhe.append(["Estacionamento", "Sim" if info.get("estacionamento") else "Não"])
     ws_detalhe.append(["Gramado", "Sim" if info.get("gramado") else "Não"])
@@ -72,7 +77,6 @@ def generate_excel_and_send_email(localidade, unidade, info):
     ws_detalhe.append(["Sala de Vacina", "Sim" if info.get("vacina") else "Não"])
     ws_detalhe.append(["Qtd Funcionários", info.get("qtd_func", "")])
     
-    # NOVO: Adiciona a "Outra Área" se houver valor
     outra_area_valor = info.get("outra_area", "")
     if outra_area_valor:
         ws_detalhe.append(["Outra Área", outra_area_valor])
@@ -90,7 +94,6 @@ def generate_excel_and_send_email(localidade, unidade, info):
         "Área Externa": {"sheet": wb.create_sheet("Área Externa"), "total_area": 0.0}
     }
 
-    # Definir os cabeçalhos para as abas de medidas (agora sem Localidade e Unidade)
     CABECALHO_MEDIDAS = ["Comprimento (m)", "Largura (m)", "Área (m²)"]
     for tipo_aba in abas.keys():
         abas[tipo_aba]["sheet"].append(CABECALHO_MEDIDAS)
@@ -99,7 +102,6 @@ def generate_excel_and_send_email(localidade, unidade, info):
         if isinstance(medida, list) and len(medida) == 4:
             tipo, comp, larg, area = medida
             if tipo in abas:
-                # Adiciona apenas comprimento, largura e área
                 abas[tipo]["sheet"].append([comp, larg, round(area, 2)]) 
                 abas[tipo]["total_area"] += area
         else:
@@ -112,19 +114,17 @@ def generate_excel_and_send_email(localidade, unidade, info):
     ws_detalhe.append(["Total Sanitário-Vestiário (m²)", round(abas["Sanitário-Vestiário"]["total_area"], 2)])
     ws_detalhe.append(["Total Área Externa (m²)", round(abas["Área Externa"]["total_area"], 2)])
 
-    # Remove abas que não foram usadas (contêm apenas cabeçalho)
     for sheet_name, sheet_data in list(abas.items()):
         if sheet_data["sheet"].max_row == 1 or (sheet_data["sheet"].max_row == 0 and sheet_data["sheet"].max_column == 0):
             wb.remove(sheet_data["sheet"])
             
-    # Remove a aba padrão 'Sheet' se estiver vazia ou com apenas o cabeçalho vazio
     if "Sheet" in wb.sheetnames:
         default_sheet = wb["Sheet"]
         if default_sheet.max_row == 0 or (default_sheet.max_row == 1 and all(cell.value is None for cell in default_sheet[1])):
             wb.remove(default_sheet)
 
     if "Detalhe" in wb.sheetnames:
-        wb.active = wb["Detalhe"] # Garante que a aba Detalhe seja a primeira a abrir
+        wb.active = wb["Detalhe"]
 
     excel_file_in_memory = io.BytesIO()
     wb.save(excel_file_in_memory)
@@ -135,16 +135,13 @@ def generate_excel_and_send_email(localidade, unidade, info):
         print("Aviso: O arquivo Excel gerado está vazio.")
         raise Exception("O arquivo Excel gerado está vazio. Verifique os dados da unidade.")
 
-    # Constrói o nome base do arquivo
     base_nome = f"{unidade}_{localidade}"
     
-    # --- Lógica para remover acentos e caracteres especiais (mantida do pedido anterior) ---
     normalized_name = unicodedata.normalize('NFKD', base_nome)
     ascii_name = normalized_name.encode('ascii', 'ignore').decode('utf-8')
     nome_arquivo_limpo = re.sub(r'[^a-zA-Z0-9_]', '_', ascii_name)
     nome_arquivo_limpo = re.sub(r'_+', '_', nome_arquivo_limpo)
     nome_arquivo = f"{nome_arquivo_limpo.strip('_')}.xlsx"
-    # --- Fim da lógica ---
 
     if not EMAIL_USER or not EMAIL_PASS or not EMAIL_SERVER:
         raise Exception("Configurações de e-mail incompletas no servidor. Verifique EMAIL_USER, EMAIL_PASS, EMAIL_SERVER no Render.")
@@ -162,7 +159,7 @@ def generate_excel_and_send_email(localidade, unidade, info):
     Data: {info.get('data', 'Não informada')}
     Responsável: {info.get('responsavel', 'Não informado')}
     """
-    if outra_area_valor: # Adiciona ao corpo do email se houver valor
+    if outra_area_valor:
         body += f"\nOutra Área: {outra_area_valor}"
     body += """
 
@@ -242,7 +239,6 @@ def salvar_unidade():
     gramado = 'gramado' in request.form
     curativo = 'curativo' in request.form
     vacina = 'vacina' in request.form
-    # NOVO: Obtém o valor de 'outra_area' do formulário
     outra_area = request.form.get('outra_area', '').strip() 
 
     medidas_json_str = request.form.get('medidas_json', '[]')
@@ -251,7 +247,6 @@ def salvar_unidade():
     except json.JSONDecodeError:
         medidas = []
 
-    # Prepare the unit data dictionary
     unit_data = {
         "data": data,
         "responsavel": responsavel,
@@ -265,7 +260,7 @@ def salvar_unidade():
         "curativo": curativo,
         "vacina": vacina,
         "medidas": medidas,
-        "outra_area": outra_area # NOVO: Salva o valor da "Outra Área"
+        "outra_area": outra_area
     }
 
     localidades = carregar_dados()
@@ -277,7 +272,6 @@ def salvar_unidade():
 
     try:
         generate_excel_and_send_email(localidade, unidade, unit_data)
-        # CORREÇÃO: A linha abaixo foi corretamente indentada para ficar dentro do bloco 'try'.
         return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"})
     except Exception as e:
         print(f"Erro ao gerar Excel/enviar e-mail: {e}")
