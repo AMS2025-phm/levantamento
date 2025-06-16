@@ -226,6 +226,11 @@ def salvar_unidade():
     responsavel = request.form.get('responsavel', '')
     # NOVO: Captura o e-mail de cópia do formulário
     email_copia = request.form.get('email_copia', '').strip()
+
+    # Adiciona a verificação para o campo email_copia
+    if not email_copia:
+        return jsonify({"status": "warning", "message": "O campo 'Seu E-mail para Cópia' está em branco. O e-mail será enviado apenas para o destinatário principal."}), 200 # Using 200 for a warning that doesn't stop the process
+
     qtd_func = request.form.get('qtd_func', '')
 
     piso_selecionado = []
@@ -279,7 +284,10 @@ def salvar_unidade():
     try:
         # MODIFICADO: Passa o e-mail de cópia para a função de envio
         generate_excel_and_send_email(localidade, unidade, unit_data, email_copia)
-        return jsonify({"status": "success", "message": "Unidade salva e Excel enviado por e-mail com sucesso!"})
+        message = "Unidade salva e Excel enviado por e-mail com sucesso!"
+        if not email_copia:
+            message += " O campo 'Seu E-mail para Cópia' estava em branco, então o e-mail foi enviado apenas para o destinatário principal."
+        return jsonify({"status": "success", "message": message})
     except Exception as e:
         print(f"Erro ao gerar Excel/enviar e-mail: {e}")
         return jsonify({"status": "error", "message": f"Unidade salva, mas houve um erro ao gerar o Excel ou enviar o e-mail: {str(e)}."}), 500
