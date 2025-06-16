@@ -55,6 +55,15 @@
                 </div>
             </div>
 
+		<!-- Adicionado abaixo da opção "Vidros Altos" -->
+		<div class="form-group" id="perigoContainer" style="display:none;">
+    			<label>
+        			<input type="checkbox" name="vidros_perigo" id="vidros_perigo">
+        			Necessita equipamento adicional/ representa perigo
+    			</label>
+		</div>
+
+
             <div class="form-group">
                 <label>Paredes:</label>
                 <div class="checkbox-group">
@@ -157,6 +166,9 @@
             // NOVOS ELEMENTOS
             const outraAreaCheckbox = document.getElementById('outra_area_checkbox');
             const outraAreaTexto = document.getElementById('outra_area_texto');
+	    const radiosVidrosAltos = document.querySelectorAll('input[name="vidros_altos"]');
+	    const perigoContainer = document.getElementById('perigoContainer');
+	    const checkboxPerigo = document.getElementById('vidros_perigo');
 
             let medidasData = [];
             let selectedMedidaIndex = null;
@@ -341,7 +353,23 @@
                 atualizarListaMedidas();
                 document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
                 localidadeUnidadeSelect.value = "";
-                // NOVO: Reseta o estado do campo "Outra Área"
+               
+		radiosVidrosAltos.forEach(radio => {
+    			radio.addEventListener('change', () => {
+        			if (radio.value === "Sim" && radio.checked) {
+            				perigoContainer.style.display = 'block';
+        			} else if (radio.value === "Não" && radio.checked) {
+            				perigoContainer.style.display = 'none';
+            				checkboxPerigo.checked = false;
+        			}
+    			});
+		});
+
+		// Ao montar o FormData no submit, inclua:
+		formData.append('vidros_perigo', checkboxPerigo.checked ? 'Sim' : 'Não');
+
+
+		 // NOVO: Reseta o estado do campo "Outra Área"
                 outraAreaCheckbox.checked = false;
                 outraAreaTexto.disabled = true;
                 outraAreaTexto.value = '';
