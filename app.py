@@ -46,7 +46,6 @@ def salvar_dados(dados):
     with open(ARQUIVO_DADOS, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=4)
 
-# MODIFICADO: Função agora aceita um e-mail de cópia
 def generate_excel_and_send_email(localidade, unidade, info, email_copia):
     """
     Gera uma planilha Excel com os dados de uma unidade e a envia por e-mail.
@@ -63,8 +62,7 @@ def generate_excel_and_send_email(localidade, unidade, info, email_copia):
     ws_detalhe.append(["Unidade", unidade])
     ws_detalhe.append(["Data", info.get("data", "")])
     ws_detalhe.append(["Responsável", info.get("responsavel", "")])
-    # NOVO: Adiciona o e-mail do inspetor na planilha
-    ws_detalhe.append(["E-mail do Inspetor", info.get("email_copia", "")])
+    ws_detalhe.append(["E-mail do Inspetor", info.get("email_copia", "")]) # Adiciona o e-mail do inspetor na planilha
     ws_detalhe.append(["Tipo de Piso", ", ".join(info.get("piso", []))])
     ws_detalhe.append(["Vidros Altos", info.get("vidros_altos", "")])
     
@@ -144,14 +142,13 @@ def generate_excel_and_send_email(localidade, unidade, info, email_copia):
     if not EMAIL_USER or not EMAIL_PASS or not EMAIL_SERVER:
         raise Exception("Configurações de e-mail incompletas no servidor.")
 
-    # MODIFICADO: Cria a lista de destinatários
     recipients = [FIXED_RECIPIENT_EMAIL]
-    if email_copia and "@" in email_copia: # Adiciona o e-mail de cópia se for válido
+    if email_copia and "@" in email_copia:
         recipients.append(email_copia)
 
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
-    msg['To'] = ", ".join(recipients) # Transforma a lista em uma string separada por vírgulas
+    msg['To'] = ", ".join(recipients)
     msg['Subject'] = f"Levantamento das Medidas da Unidade: {localidade} - {unidade}"
 
     body = f"""
@@ -224,13 +221,7 @@ def salvar_unidade():
 
     data = request.form.get('data', '')
     responsavel = request.form.get('responsavel', '')
-    # NOVO: Captura o e-mail de cópia do formulário
     email_copia = request.form.get('email_copia', '').strip()
-
-    # Adiciona a verificação para o campo email_copia
-    if not email_copia:
-        return jsonify({"status": "warning", "message": "O campo 'Seu E-mail para Cópia' está em branco. O e-mail será enviado apenas para o destinatário principal."}), 200 # Using 200 for a warning that doesn't stop the process
-
     qtd_func = request.form.get('qtd_func', '')
 
     piso_selecionado = []
@@ -260,7 +251,7 @@ def salvar_unidade():
     unit_data = {
         "data": data,
         "responsavel": responsavel,
-        "email_copia": email_copia, # NOVO: Salva o e-mail nos dados da unidade
+        "email_copia": email_copia,
         "qtd_func": qtd_func,
         "piso": piso_selecionado,
         "vidros_altos": vidros_altos,
@@ -281,13 +272,16 @@ def salvar_unidade():
     localidades[localidade][unidade] = unit_data
     salvar_dados(localidades)
 
+    # Inicializa a mensagem de sucesso
+    success_message = "Unidade salva e Excel enviado por e-mail com sucesso!"
+
+    # Verifica se o e-mail de cópia está em branco e adiciona a mensagem de aviso
+    if not email_copia:
+        success_message += " O campo 'Seu E-mail para Cópia' estava em branco, então o e-mail foi enviado apenas para o destinatário principal."
+
     try:
-        # MODIFICADO: Passa o e-mail de cópia para a função de envio
         generate_excel_and_send_email(localidade, unidade, unit_data, email_copia)
-        message = "Unidade salva e Excel enviado por e-mail com sucesso!"
-        if not email_copia:
-            message += " O campo 'Seu E-mail para Cópia' estava em branco, então o e-mail foi enviado apenas para o destinatário principal."
-        return jsonify({"status": "success", "message": message})
+        return jsonify({"status": "success", "message": success_message})
     except Exception as e:
         print(f"Erro ao gerar Excel/enviar e-mail: {e}")
         return jsonify({"status": "error", "message": f"Unidade salva, mas houve um erro ao gerar o Excel ou enviar o e-mail: {str(e)}."}), 500
