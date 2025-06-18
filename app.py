@@ -1,5 +1,3 @@
-from flask import Flask, request, jsonify, send_file
-import json
 import os
 import datetime
 import openpyxl
@@ -12,39 +10,40 @@ from email.mime.text import MIMEText
 from email import encoders
 import re
 import unicodedata
-from flask_cors import CORS # Importar CORS
+from flask import Flask, request, jsonify, send_from_directory # Importar send_from_directory
+from flask_cors import CORS
 
-app = Flask(__name__)
+# Configura o Flask para servir arquivos estáticos do diretório 'www'
+# O 'static_url_path' define o prefixo da URL para esses arquivos.
+# Deixar como '/' significa que 'www/index.html' será acessível via '/'
+app = Flask(__name__, static_folder='www', static_url_path='/')
 
-# Habilitar CORS para todas as rotas
-# IMPORTANTE: Em produção, RESTRINJA AS ORIGENS. Ex:
-# CORS(app, resources={r"/*": {"origins": ["capacitor://localhost", "http://localhost", "http://localhost:8100", "http://192.168.X.X", "https://seu-frontend-deployado.onrender.com"]}})
+# Habilitar CORS para todas as rotas (necessário para comunicação entre domínios)
+# Para produção, restrinja as origens para maior segurança. Ex:
+# CORS(app, resources={r"/*": {"origins": ["capacitor://localhost", "http://localhost", "http://localhost:8100", "http://192.168.X.X", "https://seu-frontend-render.onrender.com"]}})
 CORS(app)
 
-# Nome do arquivo onde os dados temporários podem ser armazenados (para o XLSX e E-mail)
-# No Render, sistemas de arquivos são EFÊMEROS (voláteis).
-# Para persistência real dos dados coletados, você precisará de um BANCO DE DADOS EXTERNO (ex: PostgreSQL no Render).
-# Para este cenário, o foco será em processar e enviar o e-mail/XLSX no momento da requisição.
-ARQUIVO_DADOS_COLETADOS = "dados_levantamento_coletados.json"
+# Nome do arquivo onde os dados das localidades são armazenados (se o backend ainda os usa)
+ARQUIVO_LOCALIDADES_JSON = "localidades.json"
 
 # --- Configurações de E-mail (Lidas de variáveis de ambiente do Render) ---
-# Você deve definir estas variáveis no painel do Render para seu serviço web
 EMAIL_USER = os.environ.get("EMAIL_USER")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
 SMTP_SERVER = os.environ.get("SMTP_SERVER")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", 587)) # Padrão 587 para TLS/STARTTLS
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
 
-# --- Funções Auxiliares do seu script original ---
-def carregar_dados():
-    # Esta função parece ser para carregar dados de um 'localidades.json'
-    # Se 'localidades.json' for usado apenas pelo frontend, pode remover esta função do backend.
-    # Se o backend precisa desses dados, certifique-se que o 'localidades.json' esteja no deploy.
-    if os.path.exists(ARQUIVO_DADOS): # ARQUIVO_DADOS precisa ser definido se for usado aqui
-        with open(ARQUIVO_DADOS, 'r', encoding='utf-8') as f:
-            return json.load(f)
+# --- Funções Auxiliares ---
+def carregar_dados_localidades():
+    if os.path.exists(ARQUIVO_LOCALIDADES_JSON):
+        try:
+            with open(ARQUIVO_LOCALIDADES_JSON, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            print(f"ERRO: Falha ao decodificar {ARQUIVO_LOCALIDADES_JSON}: {e}")
+            return {}
+    print(f"AVISO: {ARQUIVO_LOCALIDADES_JSON} não encontrado no backend. As rotas relacionadas podem falhar.")
     return {}
 
-# Sua função para limpar caracteres (se usada para nomes de arquivos ou emails)
 def slugify(value, allow_unicode=False):
     value = str(value)
     if allow_unicode:
@@ -54,30 +53,25 @@ def slugify(value, allow_unicode=False):
     value = re.sub(r'[^\w\s-]', '', value).strip().lower()
     return re.sub(r'[-\s]+', '-', value)
 
-# --- Rotas Existentes para Seleção de Local/Ambiente/Descrição ---
-# Estas rotas provavelmente continuam sendo usadas pelo frontend para popular os dropdowns
-# a partir do 'localidades.json' (assumindo que ele será carregado ou que essas rotas serão removidas
-# se o frontend gerenciar isso 100% estaticamente ou via IndexedDB).
-# Se o 'localidades.json' é estático e servido pelo frontend/Capacitor, você pode REMOVER
-# essas rotas do backend para simplificar, a menos que ele precise ser dinâmico.
-# Se o backend ainda precisa carregar 'localidades.json', certifique-se que 'ARQUIVO_DADOS' esteja definido.
+# --- Rotas para Servir Arquivos Estáticos do Frontend ---
+@app.route('/')
+def serve_index():
+    """Serve o index.html na raiz do aplicativo."""
+    return send_from_directory(app.static_folder, 'index.html')
 
-# Exemplo de como você pode reintroduzir a lógica para carregar o seu localidades.json
-# se o backend REALMENTE precisar dele. Caso contrário, remova estas funções.
-ARQUIVO_LOCALIDADES_JSON = "localidades.json" # Renomeei para clareza
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serve outros arquivos estáticos (CSS, JS, imagens) do diretório www."""
+    # Garante que o service worker seja servido com o cabeçalho correto
+    if path == 'sw.js':
+        return send_from_directory(app.static_folder, path, mimetype='application/javascript')
+    return send_from_directory(app.static_folder, path)
 
-def carregar_dados_localidades():
-    if os.path.exists(ARQUIVO_LOCALIDADES_JSON):
-        with open(ARQUIVO_LOCALIDADES_JSON, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    print(f"AVISO: {ARQUIVO_LOCALIDADES_JSON} não encontrado no backend. As rotas relacionadas podem falhar.")
-    return {}
-
-
+# --- Suas Rotas Existentes para Seleção de Local/Ambiente/Descrição (se ainda forem usadas pelo backend) ---
 @app.route('/get_localidades_unidades', methods=['GET'])
 def get_localidades_unidades():
     """Retorna a lista de localidades e unidades para o dropdown em JSON."""
-    localidades = carregar_dados_localidades() # Chama a nova função
+    localidades = carregar_dados_localidades()
     lista_localidades_unidades = []
     for local, unidades in localidades.items():
         for unidade in unidades.keys():
@@ -93,20 +87,16 @@ def get_unidade_data(local_unidade):
         return jsonify({"status": "error", "message": "Formato de unidade inválido."}), 400
 
     local, unidade = local_unidade.split(" - ", 1)
-    localidades = carregar_dados_localidades() # Chama a nova função
+    localidades = carregar_dados_localidades()
 
     if local in localidades and unidade in localidades[local]:
         return jsonify({"status": "success", "data": localidades[local][unidade]}), 200
     else:
         return jsonify({"status": "error", "message": "Unidade não encontrada."}), 404
 
-# --- Nova rota para RECEBER DADOS DO FORMULÁRIO DO FRONTEND ---
+# --- Rota para RECEBER DADOS DO FORMULÁRIO DO FRONTEND e processar ---
 @app.route('/submit_levantamento', methods=['POST'])
 def submit_levantamento():
-    """
-    Recebe os dados do formulário de levantamento do frontend (incluindo os sincronizados offline).
-    Processa, gera o XLSX e envia o e-mail.
-    """
     try:
         dados_formulario = request.get_json()
         if not dados_formulario:
@@ -114,17 +104,13 @@ def submit_levantamento():
 
         print(f"Dados de levantamento recebidos para processamento: {json.dumps(dados_formulario, indent=2)}")
 
-        # Extrair dados para o XLSX e E-mail
-        # Você precisará adaptar isso com base na estrutura real dos dados que seu frontend envia
         localidade = dados_formulario.get('localidade', 'N/A')
         unidade = dados_formulario.get('unidade', 'N/A')
         data_coleta = dados_formulario.get('dataColeta', datetime.date.today().strftime('%Y-%m-%d'))
         responsavel = dados_formulario.get('responsavel', 'N/A')
-        contato_email = dados_formulario.get('contatoEmail', '') # Email para envio
+        contato_email = dados_formulario.get('contatoEmail', '')
 
-        # Coleta os detalhes das medidas, assumindo que eles vêm em uma lista ou similar
-        # Adapte esta parte conforme a estrutura exata do 'dados_formulario'
-        medidas = dados_formulario.get('medidas', []) # Ex: uma lista de dicionários com 'ambiente', 'tipoMedida', 'descricao', etc.
+        medidas = dados_formulario.get('medidas', [])
 
         # --- Geração do XLSX ---
         output = io.BytesIO()
@@ -132,7 +118,6 @@ def submit_levantamento():
         sheet = workbook.active
         sheet.title = "Levantamento de Medidas"
 
-        # Cabeçalhos do Excel (adapte conforme os campos que você coleta)
         headers = [
             "Localidade", "Unidade", "Data da Coleta", "Responsável", "Email de Contato",
             "Ambiente", "Tipo de Medida", "Descrição", "Medida L", "Medida C", "Quantidade",
@@ -140,7 +125,6 @@ def submit_levantamento():
         ]
         sheet.append(headers)
 
-        # Preencher o Excel com os dados
         for medida in medidas:
             row = [
                 localidade, unidade, data_coleta, responsavel, contato_email,
@@ -157,29 +141,24 @@ def submit_levantamento():
             ]
             sheet.append(row)
 
-        # Ajusta a largura das colunas (opcional)
         for col in range(1, len(headers) + 1):
             sheet.column_dimensions[get_column_letter(col)].width = 20
 
         workbook.save(output)
-        output.seek(0) # Retorna para o início do stream de bytes
+        output.seek(0)
 
         # --- Envio de E-mail com o XLSX Anexado ---
-        # Certifique-se de que EMAIL_USER, EMAIL_PASSWORD, SMTP_SERVER, SMTP_PORT estão configurados no Render
         if not all([EMAIL_USER, EMAIL_PASSWORD, SMTP_SERVER, SMTP_PORT]):
             print("AVISO: Credenciais de e-mail incompletas. E-mail não será enviado.")
-            # Você pode retornar um erro 500 aqui se o envio de e-mail for crítico
             # return jsonify({"status": "error", "message": "Configurações de e-mail incompletas no servidor."}), 500
-            # Ou apenas continuar se o XLSX for o principal objetivo
 
         msg = MIMEMultipart()
         msg['From'] = EMAIL_USER
-        msg['To'] = contato_email # Enviar para o email fornecido no formulário
+        msg['To'] = contato_email
         msg['Subject'] = f"Levantamento de Medidas - {localidade} - {unidade} ({data_coleta})"
 
         msg.attach(MIMEText("Prezado(a),\n\nSegue em anexo o levantamento de medidas realizado.\n\nAtenciosamente,\nSua Equipe", 'plain'))
 
-        # Anexar o arquivo XLSX
         part = MIMEBase('application', 'octet-stream')
         part.set_payload(output.read())
         encoders.encode_base64(part)
@@ -189,27 +168,22 @@ def submit_levantamento():
 
         try:
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
-                smtp.starttls() # Para porta 587
-                # Se for porta 465 (SSL), use:
-                # with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
+                smtp.starttls()
                 smtp.login(EMAIL_USER, EMAIL_PASSWORD)
                 smtp.send_message(msg)
             print(f"E-mail com XLSX enviado para {contato_email} com sucesso!")
         except Exception as e:
             print(f"ERRO ao enviar e-mail com XLSX para {contato_email}: {e}")
-            # Você pode querer retornar um 500 aqui ou apenas logar o erro
-            # return jsonify({"status": "error", "message": f"Erro ao enviar e-mail: {str(e)}"}), 500
-
 
         return jsonify({"status": "success", "message": "Dados recebidos, XLSX gerado e e-mail enviado!", "data_received": dados_formulario}), 200
 
     except Exception as e:
         print(f"ERRO CRÍTICO no submit_levantamento: {e}")
         import traceback
-        traceback.print_exc() # Imprime o stack trace para depuração
+        traceback.print_exc()
         return jsonify({"status": "error", "message": "Erro interno do servidor ao processar levantamento", "details": str(e)}), 500
 
-# Adicione uma rota simples para verificar o status da rede (para o Render)
+# Endpoint de saúde para o Render verificar se o app está ativo
 @app.route('/healthcheck', methods=['HEAD', 'GET'])
 def healthcheck():
     return '', 200
@@ -223,6 +197,5 @@ if __name__ == '__main__':
     # os.environ['SMTP_SERVER'] = 'smtp.seuservidor.com' # Ex: 'smtp.gmail.com'
     # os.environ['SMTP_PORT'] = '587' # Ou 465 para SSL
 
-    # Obtém a porta da variável de ambiente PORT, padrão para 5000 se não definida (para desenvolvimento local)
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True) # debug=True para desenvolvimento, False em produção
+    app.run(host='0.0.0.0', port=port, debug=True)
