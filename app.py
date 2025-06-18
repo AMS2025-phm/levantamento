@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import json
 import os
 import datetime
 import openpyxl
+from openpyxl.utils import get_column_letter
 import io
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -14,214 +15,214 @@ import unicodedata
 from flask_cors import CORS # Importar CORS
 
 app = Flask(__name__)
-# Habilitar CORS para todas as rotas (importante para comunicação entre domínios)
-# Durante o desenvolvimento, '*' permite qualquer origem.
-# Para produção, você pode querer restringir a 'capacitor://localhost'
-# ou a URL do seu app publicado, se houver um domínio web para ele.
-CORS(app) 
 
-# Nome do arquivo onde os dados são armazenados
-ARQUIVO_DADOS = "localidades.json"
+# Habilitar CORS para todas as rotas
+# IMPORTANTE: Em produção, RESTRINJA AS ORIGENS. Ex:
+# CORS(app, resources={r"/*": {"origins": ["capacitor://localhost", "http://localhost", "http://localhost:8100", "http://192.168.X.X", "https://seu-frontend-deployado.onrender.com"]}})
+CORS(app)
 
-# Listas de opções para os campos do formulário
-TIPOS_PISO = [
-    "Paviflex", "Cerâmica", "Porcelanato", "Granilite",
-    "Cimento Queimado", "Epoxi", "Ardósia", "Outros"
-]
-TIPOS_MEDIDA = ["Vidro", "Sanitário-Vestiário", "Área Interna", "Área Externa"]
-TIPOS_PAREDE = ["Alvenaria", "Estuque", "Divisórias"]
+# Nome do arquivo onde os dados temporários podem ser armazenados (para o XLSX e E-mail)
+# No Render, sistemas de arquivos são EFÊMEROS (voláteis).
+# Para persistência real dos dados coletados, você precisará de um BANCO DE DADOS EXTERNO (ex: PostgreSQL no Render).
+# Para este cenário, o foco será em processar e enviar o e-mail/XLSX no momento da requisição.
+ARQUIVO_DADOS_COLETADOS = "dados_levantamento_coletados.json"
 
 # --- Configurações de E-mail (Lidas de variáveis de ambiente do Render) ---
-EMAIL_USER = os.environ.get('EMAIL_USER')
-EMAIL_PASS = os.environ.get('EMAIL_PASS')
-EMAIL_SERVER = os.environ.get('EMAIL_SERVER')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587)) # Default para 587 se não setado
+# Você deve definir estas variáveis no painel do Render para seu serviço web
+EMAIL_USER = os.environ.get("EMAIL_USER")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+SMTP_SERVER = os.environ.get("SMTP_SERVER")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 587)) # Padrão 587 para TLS/STARTTLS
 
-# --- Funções de Carregamento/Salvamento de Dados ---
+# --- Funções Auxiliares do seu script original ---
 def carregar_dados():
-    if not os.path.exists(ARQUIVO_DADOS):
-        return {}
-    with open(ARQUIVO_DADOS, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    # Esta função parece ser para carregar dados de um 'localidades.json'
+    # Se 'localidades.json' for usado apenas pelo frontend, pode remover esta função do backend.
+    # Se o backend precisa desses dados, certifique-se que o 'localidades.json' esteja no deploy.
+    if os.path.exists(ARQUIVO_DADOS): # ARQUIVO_DADOS precisa ser definido se for usado aqui
+        with open(ARQUIVO_DADOS, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
 
-def salvar_dados(dados):
-    with open(ARQUIVO_DADOS, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=4)
+# Sua função para limpar caracteres (se usada para nomes de arquivos ou emails)
+def slugify(value, allow_unicode=False):
+    value = str(value)
+    if allow_unicode:
+        value = unicodedata.normalize('NFKC', value)
+    else:
+        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^\w\s-]', '', value).strip().lower()
+    return re.sub(r'[-\s]+', '-', value)
 
-# --- Funções de Geração de Excel e Envio de E-mail ---
-def remover_acentos(texto):
-    return unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('utf-8')
+# --- Rotas Existentes para Seleção de Local/Ambiente/Descrição ---
+# Estas rotas provavelmente continuam sendo usadas pelo frontend para popular os dropdowns
+# a partir do 'localidades.json' (assumindo que ele será carregado ou que essas rotas serão removidas
+# se o frontend gerenciar isso 100% estaticamente ou via IndexedDB).
+# Se o 'localidades.json' é estático e servido pelo frontend/Capacitor, você pode REMOVER
+# essas rotas do backend para simplificar, a menos que ele precise ser dinâmico.
+# Se o backend ainda precisa carregar 'localidades.json', certifique-se que 'ARQUIVO_DADOS' esteja definido.
 
-def gerar_excel(dados_unidade, localidade_nome, unidade_nome):
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = f"Medidas {unidade_nome}"
+# Exemplo de como você pode reintroduzir a lógica para carregar o seu localidades.json
+# se o backend REALMENTE precisar dele. Caso contrário, remova estas funções.
+ARQUIVO_LOCALIDADES_JSON = "localidades.json" # Renomeei para clareza
 
-    # Cabeçalho da tabela
-    headers = ["Localidade", "Unidade", "Data Medição", "Responsável", "Medida (m²)", "Tipo de Medida", "Tipo de Piso", "Tipo de Parede", "Observações"]
-    ws.append(headers)
+def carregar_dados_localidades():
+    if os.path.exists(ARQUIVO_LOCALIDADES_JSON):
+        with open(ARQUIVO_LOCALIDADES_JSON, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    print(f"AVISO: {ARQUIVO_LOCALIDADES_JSON} não encontrado no backend. As rotas relacionadas podem falhar.")
+    return {}
 
-    for i, medida in enumerate(dados_unidade['medidas']):
-        row = [
-            localidade_nome,
-            unidade_nome,
-            dados_unidade['data_medicao'],
-            dados_unidade['responsavel'],
-            medida['medida_m2'],
-            medida['tipo_medida'],
-            medida['tipo_piso'],
-            medida['tipo_parede'],
-            medida['observacoes']
-        ]
-        ws.append(row)
 
-    # Ajustar largura das colunas
-    for col in ws.columns:
-        max_length = 0
-        column = col[0].column_letter # Get the column name
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
-            except:
-                pass
-        adjusted_width = (max_length + 2)
-        ws.column_dimensions[column].width = adjusted_width
+@app.route('/get_localidades_unidades', methods=['GET'])
+def get_localidades_unidades():
+    """Retorna a lista de localidades e unidades para o dropdown em JSON."""
+    localidades = carregar_dados_localidades() # Chama a nova função
+    lista_localidades_unidades = []
+    for local, unidades in localidades.items():
+        for unidade in unidades.keys():
+            lista_localidades_unidades.append(f"{local} - {unidade}")
 
-    excel_file = io.BytesIO()
-    wb.save(excel_file)
-    excel_file.seek(0)
-    return excel_file
+    lista_localidades_unidades.sort()
+    return jsonify(lista_localidades_unidades), 200
 
-def enviar_email(destinatario, assunto, corpo, anexo_excel=None, nome_arquivo_excel=None):
-    if not EMAIL_USER or not EMAIL_PASS or not EMAIL_SERVER:
-        print("Erro: Variáveis de ambiente de e-mail não configuradas.")
-        return False, "Configurações de e-mail incompletas no servidor."
-
-    msg = MIMEMultipart()
-    msg['From'] = EMAIL_USER
-    msg['To'] = destinatario
-    msg['Subject'] = assunto
-
-    msg.attach(MIMEText(corpo, 'plain'))
-
-    if anexo_excel and nome_arquivo_excel:
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload(anexo_excel.read())
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="{nome_arquivo_excel}"')
-        msg.attach(part)
-
-    try:
-        with smtplib.SMTP(EMAIL_SERVER, EMAIL_PORT) as server:
-            server.starttls()
-            server.login(EMAIL_USER, EMAIL_PASS)
-            server.send_message(msg)
-        return True, "E-mail enviado com sucesso!"
-    except Exception as e:
-        print(f"Erro ao enviar e-mail: {e}")
-        return False, f"Erro ao enviar e-mail: {str(e)}"
-
-# --- Rotas da API ---
-
-@app.route('/')
-def home():
-    # Esta rota não será mais usada diretamente por um aplicativo móvel
-    # que usa Capacitor para servir o frontend.
-    # O Capacitor servirá o index.html diretamente.
-    return "Backend do Levantamento de Medidas está online!"
-
-@app.route('/salvar_unidade', methods=['POST'])
-def salvar_unidade():
-    data = request.get_json()
-    localidade = data.get('localidade')
-    unidade = data.get('unidade')
-    data_medicao = data.get('data_medicao')
-    responsavel = data.get('responsavel')
-    email_destino = data.get('email_destino')
-    medidas = data.get('medidas')
-
-    if not all([localidade, unidade, data_medicao, responsavel, medidas]):
-        return jsonify({"status": "error", "message": "Dados incompletos."}), 400
-
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email_destino):
-        return jsonify({"status": "error", "message": "Formato de e-mail inválido."}), 400
-
-    dados = carregar_dados()
-    if localidade not in dados:
-        dados[localidade] = {}
-    dados[localidade][unidade] = {
-        "data_medicao": data_medicao,
-        "responsavel": responsavel,
-        "email_destino": email_destino,
-        "medidas": medidas
-    }
-    salvar_dados(dados)
-
-    try:
-        # Gerar Excel
-        excel_data = gerar_excel(dados[localidade][unidade], localidade, unidade)
-        nome_arquivo = f"Levantamento_Medidas_{remover_acentos(localidade)}_{remover_acentos(unidade)}_{data_medicao}.xlsx"
-
-        # Enviar e-mail
-        assunto = f"Levantamento de Medidas - {localidade} - {unidade}"
-        corpo_email = (f"Prezado(a),\n\n"
-                       f"Segue em anexo o levantamento de medidas para a unidade '{unidade}' "
-                       f"na localidade '{localidade}', realizado em {data_medicao} pelo(a) {responsavel}.\n\n"
-                       f"Atenciosamente,\nSua Equipe")
-
-        email_sucesso, email_message = enviar_email(email_destino, assunto, corpo_email, excel_data, nome_arquivo)
-
-        if email_sucesso:
-            return jsonify({"status": "success", "message": "Unidade salva com sucesso e e-mail enviado!", "email_status": email_message}), 200
-        else:
-            return jsonify({"status": "warning", "message": "Unidade salva, mas houve um problema ao enviar o e-mail.", "email_status": email_message}), 200
-
-    except Exception as e:
-        print(f"Erro ao gerar Excel/enviar e-mail: {e}")
-        return jsonify({"status": "error", "message": f"Unidade salva, mas houve um erro ao gerar o Excel ou enviar o e-mail: {str(e)}."}), 500
-
-@app.route('/carregar_unidade', methods=['POST'])
-def carregar_unidade():
-    """Carrega os dados de uma unidade específica para edição."""
-    data = request.get_json()
-    local_unidade = data.get('local_unidade')
-    
-    if not local_unidade or " - " not in local_unidade:
+@app.route('/get_unidade_data/<string:local_unidade>', methods=['GET'])
+def get_unidade_data(local_unidade):
+    """Retorna os detalhes de uma unidade específica."""
+    if " - " not in local_unidade:
         return jsonify({"status": "error", "message": "Formato de unidade inválido."}), 400
 
     local, unidade = local_unidade.split(" - ", 1)
-    localidades = carregar_dados()
+    localidades = carregar_dados_localidades() # Chama a nova função
 
     if local in localidades and unidade in localidades[local]:
         return jsonify({"status": "success", "data": localidades[local][unidade]}), 200
     else:
         return jsonify({"status": "error", "message": "Unidade não encontrada."}), 404
 
-@app.route('/get_localidades_unidades', methods=['GET'])
-def get_localidades_unidades():
-    """Retorna a lista de localidades e unidades para o dropdown em JSON."""
-    localidades = carregar_dados()
-    lista_localidades_unidades = []
-    for local, unidades in localidades.items():
-        for unidade in unidades.keys():
-            lista_localidades_unidades.append(f"{local} - {unidade}")
-    
-    # Ordena a lista alfabeticamente
-    lista_localidades_unidades.sort()
-    
-    return jsonify(lista_localidades_unidades), 200
+# --- Nova rota para RECEBER DADOS DO FORMULÁRIO DO FRONTEND ---
+@app.route('/submit_levantamento', methods=['POST'])
+def submit_levantamento():
+    """
+    Recebe os dados do formulário de levantamento do frontend (incluindo os sincronizados offline).
+    Processa, gera o XLSX e envia o e-mail.
+    """
+    try:
+        dados_formulario = request.get_json()
+        if not dados_formulario:
+            return jsonify({"status": "error", "message": "Nenhum dado de formulário recebido."}), 400
 
-# Adicione uma rota simples para verificar o status da rede (opcional, mas útil)
+        print(f"Dados de levantamento recebidos para processamento: {json.dumps(dados_formulario, indent=2)}")
+
+        # Extrair dados para o XLSX e E-mail
+        # Você precisará adaptar isso com base na estrutura real dos dados que seu frontend envia
+        localidade = dados_formulario.get('localidade', 'N/A')
+        unidade = dados_formulario.get('unidade', 'N/A')
+        data_coleta = dados_formulario.get('dataColeta', datetime.date.today().strftime('%Y-%m-%d'))
+        responsavel = dados_formulario.get('responsavel', 'N/A')
+        contato_email = dados_formulario.get('contatoEmail', '') # Email para envio
+
+        # Coleta os detalhes das medidas, assumindo que eles vêm em uma lista ou similar
+        # Adapte esta parte conforme a estrutura exata do 'dados_formulario'
+        medidas = dados_formulario.get('medidas', []) # Ex: uma lista de dicionários com 'ambiente', 'tipoMedida', 'descricao', etc.
+
+        # --- Geração do XLSX ---
+        output = io.BytesIO()
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Levantamento de Medidas"
+
+        # Cabeçalhos do Excel (adapte conforme os campos que você coleta)
+        headers = [
+            "Localidade", "Unidade", "Data da Coleta", "Responsável", "Email de Contato",
+            "Ambiente", "Tipo de Medida", "Descrição", "Medida L", "Medida C", "Quantidade",
+            "Detalhes Adicionais", "Tipo de Piso", "Tipo de Parede", "Observações"
+        ]
+        sheet.append(headers)
+
+        # Preencher o Excel com os dados
+        for medida in medidas:
+            row = [
+                localidade, unidade, data_coleta, responsavel, contato_email,
+                medida.get('ambiente', ''),
+                medida.get('tipoMedida', ''),
+                medida.get('descricao', ''),
+                medida.get('medidaL', ''),
+                medida.get('medidaC', ''),
+                medida.get('quantidade', ''),
+                medida.get('detalhesAdicionais', ''),
+                medida.get('tipoPiso', ''),
+                medida.get('tipoParede', ''),
+                medida.get('observacoes', '')
+            ]
+            sheet.append(row)
+
+        # Ajusta a largura das colunas (opcional)
+        for col in range(1, len(headers) + 1):
+            sheet.column_dimensions[get_column_letter(col)].width = 20
+
+        workbook.save(output)
+        output.seek(0) # Retorna para o início do stream de bytes
+
+        # --- Envio de E-mail com o XLSX Anexado ---
+        # Certifique-se de que EMAIL_USER, EMAIL_PASSWORD, SMTP_SERVER, SMTP_PORT estão configurados no Render
+        if not all([EMAIL_USER, EMAIL_PASSWORD, SMTP_SERVER, SMTP_PORT]):
+            print("AVISO: Credenciais de e-mail incompletas. E-mail não será enviado.")
+            # Você pode retornar um erro 500 aqui se o envio de e-mail for crítico
+            # return jsonify({"status": "error", "message": "Configurações de e-mail incompletas no servidor."}), 500
+            # Ou apenas continuar se o XLSX for o principal objetivo
+
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_USER
+        msg['To'] = contato_email # Enviar para o email fornecido no formulário
+        msg['Subject'] = f"Levantamento de Medidas - {localidade} - {unidade} ({data_coleta})"
+
+        msg.attach(MIMEText("Prezado(a),\n\nSegue em anexo o levantamento de medidas realizado.\n\nAtenciosamente,\nSua Equipe", 'plain'))
+
+        # Anexar o arquivo XLSX
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(output.read())
+        encoders.encode_base64(part)
+        filename = f"Levantamento_Medidas_{slugify(localidade)}_{slugify(unidade)}_{data_coleta}.xlsx"
+        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+        msg.attach(part)
+
+        try:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+                smtp.starttls() # Para porta 587
+                # Se for porta 465 (SSL), use:
+                # with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
+                smtp.login(EMAIL_USER, EMAIL_PASSWORD)
+                smtp.send_message(msg)
+            print(f"E-mail com XLSX enviado para {contato_email} com sucesso!")
+        except Exception as e:
+            print(f"ERRO ao enviar e-mail com XLSX para {contato_email}: {e}")
+            # Você pode querer retornar um 500 aqui ou apenas logar o erro
+            # return jsonify({"status": "error", "message": f"Erro ao enviar e-mail: {str(e)}"}), 500
+
+
+        return jsonify({"status": "success", "message": "Dados recebidos, XLSX gerado e e-mail enviado!", "data_received": dados_formulario}), 200
+
+    except Exception as e:
+        print(f"ERRO CRÍTICO no submit_levantamento: {e}")
+        import traceback
+        traceback.print_exc() # Imprime o stack trace para depuração
+        return jsonify({"status": "error", "message": "Erro interno do servidor ao processar levantamento", "details": str(e)}), 500
+
+# Adicione uma rota simples para verificar o status da rede (para o Render)
 @app.route('/healthcheck', methods=['HEAD', 'GET'])
 def healthcheck():
     return '', 200
 
 if __name__ == '__main__':
-    # Quando rodando localmente, configure as variáveis de ambiente manualmente
-    # Ex:
-    # os.environ['EMAIL_USER'] = 'seu_email@dominio.com'
-    # os.environ['EMAIL_PASS'] = 'sua_senha_app'
-    # os.environ['EMAIL_SERVER'] = 'smtp.dominio.com'
-    # os.environ['EMAIL_PORT'] = '587'
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Quando rodando localmente, configure as variáveis de ambiente manualmente ou via .env
+    # No Render, elas serão injetadas automaticamente.
+    # Exemplo para teste local (REMOVA OU COMENTE EM PRODUÇÃO):
+    # os.environ['EMAIL_USER'] = 'seu_email@exemplo.com'
+    # os.environ['EMAIL_PASSWORD'] = 'sua_senha_ou_senha_de_app'
+    # os.environ['SMTP_SERVER'] = 'smtp.seuservidor.com' # Ex: 'smtp.gmail.com'
+    # os.environ['SMTP_PORT'] = '587' # Ou 465 para SSL
+
+    # Obtém a porta da variável de ambiente PORT, padrão para 5000 se não definida (para desenvolvimento local)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=True) # debug=True para desenvolvimento, False em produção

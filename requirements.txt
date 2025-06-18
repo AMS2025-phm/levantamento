@@ -2,3 +2,4 @@ Flask
 openpyxl==3.1.2
 gunicorn
 flask-cors
+gevent # Se usar --worker-class gevent
