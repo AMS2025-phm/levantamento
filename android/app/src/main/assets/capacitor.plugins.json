@@ -1,0 +1,6 @@
+[
+	{
+		"pkg": "@capacitor/live-updates",
+		"classpath": "com.capacitorjs.liveupdates.LiveUpdatesPlugin"
+	}
+]
