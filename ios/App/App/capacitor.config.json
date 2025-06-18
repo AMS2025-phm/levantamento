@@ -1,0 +1,8 @@
+{
+	"appId": "com.example.app",
+	"appName": "LevantamentoMedidas",
+	"webDir": "www",
+	"packageClassList": [
+		"CAPLiveUpdatesPlugin"
+	]
+}
