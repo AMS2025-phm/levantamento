@@ -10,9 +10,9 @@ services:
   startCommand: gunicorn app:app
   envVars:
   - key: EMAIL_USER
-    value: seu_email@gmail.com
+    value: levantamento2026@gmail.com
   - key: EMAIL_PASS
-    value: sua_senha_de_app_google
+    value: esph bhht oexb lcxb
   - key: EMAIL_SERVER
     value: smtp.gmail.com
   - key: EMAIL_PORT
