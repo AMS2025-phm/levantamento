@@ -12,7 +12,7 @@ services:
   - key: EMAIL_USER
     value: levantamento2026@gmail.com
   - key: EMAIL_PASS
-    value: esph bhht oexb lcxb
+    value: esph bhhf oexb lcxb
   - key: EMAIL_SERVER
     value: smtp.gmail.com
   - key: EMAIL_PORT
