@@ -3,10 +3,19 @@ services:
 - type: web
   name: cadastro_web_render
   runtime: python
-  repo: https://github.com/AMS2025-phm/cadastro_web_render
+  repo: https://github.com/AMS2025-phm/levantamento
   plan: free
   region: oregon
   buildCommand: pip install -r requirements.txt
   startCommand: gunicorn app:app
+  envVars:
+  - key: EMAIL_USER
+    value: seu_email@gmail.com
+  - key: EMAIL_PASS
+    value: sua_senha_de_app_google
+  - key: EMAIL_SERVER
+    value: smtp.gmail.com
+  - key: EMAIL_PORT
+    value: 587
   autoDeployTrigger: commit
 version: "1"
