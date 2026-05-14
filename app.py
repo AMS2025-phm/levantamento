@@ -304,4 +304,7 @@ def carregar_unidade():
         return jsonify({"status": "error", "message": "Unidade não encontrada."}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Usar PORT da variável de ambiente ou 5000 como padrão
+    port = int(os.environ.get('PORT', 5000))
+    # debug=False para produção no Render
+    app.run(host='0.0.0.0', port=port, debug=False)
